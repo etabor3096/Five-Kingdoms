@@ -49,6 +49,8 @@ export const RECONNECT_DELAYS_MS = [500, 1000, 2000, 5000];
 export const PONG_TIMEOUT_MS = 2000;
 /** The server closes a socket with this code when a newer connection took over its seat. */
 const REPLACED_CLOSE_CODE = 4001;
+/** The Worker's 404 body for an unknown or expired room. */
+const ROOM_NOT_FOUND_BODY = 'Room not found';
 /** `WebSocket.OPEN`, spelled out so fakes do not need the global. */
 const SOCKET_OPEN = 1;
 /** Seats at a new room when the menu does not say otherwise. */
@@ -371,10 +373,16 @@ export class RemoteGameClient implements GameClient {
     this.scheduleReconnect();
   }
 
-  /** HTTP status of a plain `GET /rooms/:code/ws` (404 = no such room), or null if unreachable. */
+  /**
+   * Asks the server about a room with a plain `GET /rooms/:code/ws`. Returns 404 only when it
+   * is the room server itself saying "Room not found" (some other service answering on the
+   * port must not look like an expired room); null if unreachable; else the HTTP status.
+   */
   private async probeRoom(code: string): Promise<number | null> {
     try {
-      return (await this.doFetch(`${this.httpBase}/rooms/${code}/ws`)).status;
+      const res = await this.doFetch(`${this.httpBase}/rooms/${code}/ws`);
+      if (res.status !== 404) return res.status;
+      return (await res.text()).startsWith(ROOM_NOT_FOUND_BODY) ? 404 : 502;
     } catch {
       return null;
     }

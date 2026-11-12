@@ -106,7 +106,11 @@ function setup(options: { serverUrl?: string; fetchStatus?: number | 'throw' } =
         return Promise.resolve(Response.json({ code: 'ABCDE' }));
       }
       if (probeStatus.value === 'throw') return Promise.reject(new Error('offline'));
-      return Promise.resolve(new Response(null, { status: probeStatus.value }));
+      return Promise.resolve(
+        new Response(probeStatus.value === 404 ? 'Room not found' : null, {
+          status: probeStatus.value,
+        }),
+      );
     }) as typeof fetch,
     schedule: (fn, ms) => {
       const timer = { fn, ms, live: true };
