@@ -193,6 +193,9 @@ importers:
       '@five-kingdoms/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@five-kingdoms/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
         version: 2.2.0(react-native@0.88.1(@babel/core@7.29.13(supports-color@10.2.2))(@react-native/metro-config@0.88.1(@babel/core@7.29.13(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.3.0)(react@19.3.0)(supports-color@10.2.2))

@@ -12,6 +12,8 @@ const room = (phase: RoomState['phase']): RoomState => ({
   phase,
   settings: { maxSeats: 4 },
   players: [],
+  pause: null,
+  continuedIds: [],
 });
 const view = (phase: GameView['phase']): GameView => ({ phase }) as GameView;
 

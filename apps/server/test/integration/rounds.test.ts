@@ -1,3 +1,4 @@
+import type { GameEvent } from '@five-kingdoms/engine';
 import { describe, expect, it } from 'vitest';
 import { TestClient, lobbyOf, playTurn, startGame } from '../helpers/client';
 
@@ -7,6 +8,9 @@ async function playToRoundEnd(clients: TestClient[]): Promise<void> {
     await playTurn(clients);
   }
 }
+
+const isScored = (e: GameEvent): e is Extract<GameEvent, { type: 'roundScored' }> =>
+  e.type === 'roundScored';
 
 describe('rounds', () => {
   it('starts the next round only when every connected player has continued', async () => {
@@ -29,6 +33,35 @@ describe('rounds', () => {
     expect(events[0]!.events.some((e) => e.type === 'roundStarted')).toBe(true);
     expect(clients[0]!.view!.round).toBe(2);
     expect(clients[0]!.view!.hand).toHaveLength(4);
+  });
+
+  it('replays the round scores to a client that reconnects at the scoreboard', async () => {
+    const { code, clients } = await lobbyOf(3);
+    const [a, b, c] = clients as [TestClient, TestClient, TestClient];
+    await startGame(clients);
+    await playToRoundEnd(clients);
+
+    const scored = b.inbox.flatMap((m) => (m.type === 'events' ? m.events : [])).find(isScored);
+    expect(scored).toBeDefined();
+    const token = c.token!;
+    c.close();
+    await a.next('presence', (m) => !m.connected);
+
+    const back = await TestClient.join(code, 'ignored', token);
+    const welcome = back.inbox.find((m) => m.type === 'welcome');
+    expect(welcome?.type === 'welcome' && welcome.view?.phase).toBe('roundOver');
+    expect(welcome?.type === 'welcome' && welcome.lastRoundScored).toEqual(scored);
+
+    // Once the next round starts the scores are no longer replayed.
+    const version = a.version;
+    for (const client of [a, b, back]) client.send({ type: 'continue' });
+    await a.next('events', (m) => m.version > version);
+    back.close();
+    await a.next('presence', (m) => !m.connected);
+    const later = await TestClient.join(code, 'ignored', token);
+    const laterWelcome = later.inbox.find((m) => m.type === 'welcome');
+    expect(laterWelcome?.type === 'welcome' && laterWelcome.view?.round).toBe(2);
+    expect(laterWelcome?.type === 'welcome' && laterWelcome.lastRoundScored).toBeUndefined();
   });
 
   it('does not wait for a player who has disconnected', async () => {

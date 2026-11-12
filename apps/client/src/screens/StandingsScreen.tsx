@@ -3,6 +3,7 @@ import { Avatar } from '../components/Avatar';
 import { Btn, Panel, Txt } from '../components/ui';
 import { COLORS } from '../design/tokens';
 import { rankPlayers } from '../game/standings';
+import { isDevHarness } from '../net/LocalGameClient';
 import { useSnapshot, useStore } from '../state/ClientContext';
 
 /** Final standings: ranked totals (lowest wins, ties share), Rematch and Leave. */
@@ -10,6 +11,8 @@ export function StandingsScreen() {
   const { client } = useStore();
   const { view, room } = useSnapshot();
   if (!view || !room) return null;
+  // Only the host can start a rematch on the server; the dev harness has no such rule.
+  const canRematch = room.hostId === room.selfId || isDevHarness(client);
   const ranked = rankPlayers(view.players);
   const winners = ranked.filter((r) => view.winnerIds.includes(r.player.id));
 
@@ -55,7 +58,13 @@ export function StandingsScreen() {
         })}
       </Panel>
       <View style={styles.buttons}>
-        <Btn label="Rematch" width={220} onPress={() => void client.rematch()} />
+        {canRematch ? (
+          <Btn label="Rematch" width={220} onPress={() => void client.rematch()} />
+        ) : (
+          <Txt size={18} color={COLORS.textDim}>
+            Waiting for the host to start a rematch…
+          </Txt>
+        )}
         <Btn label="Leave" variant="secondary" width={220} onPress={() => void client.leave()} />
       </View>
     </View>

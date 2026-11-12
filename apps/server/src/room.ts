@@ -23,6 +23,7 @@ import {
   MAX_MESSAGE_CHARS,
   type ClientMessage,
   type ErrorCode,
+  type RoundScoredEvent,
   type ServerMessage,
 } from '@five-kingdoms/protocol';
 import { pickAutoMove } from './autoplay';
@@ -210,6 +211,7 @@ export class Room extends DurableObject<Env> {
       room: this.roomInfo(),
       view: this.game ? viewFor(this.game, playerIdForSeat(seat)) : null,
       version: room.version,
+      ...this.scoredFor(seat),
     });
     this.broadcast({ type: 'presence', seat, connected: true, deadline: null }, ws);
     await this.reconcile();
@@ -267,6 +269,7 @@ export class Room extends DurableObject<Env> {
     this.game = null;
     room.status = 'lobby';
     room.continued = [];
+    room.lastRoundScored = null;
     room.pause = null;
     this.schedule = clearDeadline(this.schedule, PAUSE);
     for (const p of room.players) {
@@ -346,6 +349,10 @@ export class Room extends DurableObject<Env> {
     if (!result.ok) throw new Error(`engine rejected a server-driven action: ${result.error.code}`);
     this.game = result.state;
     room.version += 1;
+    for (const e of result.events) {
+      if (e.type === 'roundScored') room.lastRoundScored = e;
+      else if (e.type === 'roundStarted') room.lastRoundScored = null;
+    }
     if (
       result.state.phase === 'roundOver' ||
       result.events.some((e) => e.type === 'roundStarted')
@@ -500,6 +507,18 @@ export class Room extends DurableObject<Env> {
       message,
       ...(engineCode !== undefined ? { engineCode } : {}),
     });
+  }
+
+  /**
+   * `{ lastRoundScored }` for a welcome when the table is at a scoreboard, else nothing.
+   * Redacted like any other event, so it stays correct if scoring ever hides information.
+   */
+  private scoredFor(seat: number): { lastRoundScored?: RoundScoredEvent } {
+    const scored = this.room?.lastRoundScored;
+    const phase = this.game?.phase;
+    if (!scored || (phase !== 'roundOver' && phase !== 'gameOver')) return {};
+    const [event] = redactEvents([scored], playerIdForSeat(seat));
+    return event?.type === 'roundScored' ? { lastRoundScored: event } : {};
   }
 
   private sendView(ws: WebSocket, seat: number): void {

@@ -14,6 +14,9 @@ export const MAX_MAX_SEATS = 7;
 export const PING = 'ping';
 export const PONG = 'pong';
 
+/** The engine event announcing a scored round. */
+export type RoundScoredEvent = Extract<GameEvent, { type: 'roundScored' }>;
+
 /** The engine actions a client may send. `startNextRound` is server-driven. */
 export type IntentAction = Exclude<Action, { type: 'startNextRound' }>;
 
@@ -107,6 +110,12 @@ export type ServerMessage =
       /** `null` while in the lobby. */
       view: GameView | null;
       version: number;
+      /**
+       * The most recent `roundScored` event (redacted for this seat), present while the table is
+       * at the round-end scoreboard or game over. It carries the cards each player was left
+       * holding, which a reconnecting client could not otherwise recover from the view.
+       */
+      lastRoundScored?: RoundScoredEvent;
     }
   | { type: 'roomUpdate'; room: RoomInfo }
   | { type: 'events'; events: GameEvent[]; view: GameView; version: number }
