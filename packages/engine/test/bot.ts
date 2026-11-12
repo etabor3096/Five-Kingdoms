@@ -44,10 +44,13 @@ export function botAction(state: GameState): { playerId: string; action: Action 
   if (state.phase === 'awaitingDraw') {
     const top = state.discardPile.at(-1);
     if (top) {
+      // Stall guard: take the discard only if, after the discard the rules force on us,
+      // the hand is strictly better than it is now. Every discard pick-up therefore lowers
+      // that bot's leftover points, so two bots cannot swap cards forever.
       const now = findBestArrangement(player.hand, wildRank).leftoverPoints;
-      const withTop = findBestArrangement([...player.hand, top], wildRank).leftoverPoints;
-      // only take the discard if it clearly helps (and the extra card can be dropped)
-      if (withTop + 1 < now) return { playerId, action: { type: 'drawFromDiscard' } };
+      const banned = state.rules.forbidDiscardingDrawnDiscard ? top.id : null;
+      const after = bestDiscard([...player.hand, top], wildRank, banned).rest.leftoverPoints;
+      if (after < now) return { playerId, action: { type: 'drawFromDiscard' } };
     }
     return { playerId, action: { type: 'drawFromStock' } };
   }
