@@ -60,6 +60,10 @@ export function LobbyScreen() {
         </Txt>
         {room.players.map((p) => (
           <View key={p.id} style={styles.playerRow}>
+            <View
+              accessibilityLabel={p.connected ? 'Connected' : 'Away'}
+              style={[styles.dot, { backgroundColor: p.connected ? COLORS.ok : COLORS.danger }]}
+            />
             <Avatar id={p.avatar} size={44} />
             <Txt size={22} weight="700" style={{ flex: 1 }} numberOfLines={1}>
               {p.name}
@@ -67,8 +71,15 @@ export function LobbyScreen() {
             </Txt>
             {p.isHost && (
               <Txt size={14} weight="800" color={COLORS.accent}>
-                HOST
+                👑 HOST
               </Txt>
+            )}
+            {!p.connected && (
+              <View style={[styles.state, { backgroundColor: COLORS.danger }]}>
+                <Txt size={15} weight="800" color="#1f0905">
+                  Away
+                </Txt>
+              </View>
             )}
             <View
               style={[styles.state, { backgroundColor: p.ready ? COLORS.ok : COLORS.panelBorder }]}
@@ -164,6 +175,7 @@ const styles = StyleSheet.create({
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   players: { position: 'absolute', left: 70, top: 210, width: 700, height: 470, gap: 8 },
   playerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
+  dot: { width: 12, height: 12, borderRadius: 6 },
   state: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
   openSeat: {
     width: 44,

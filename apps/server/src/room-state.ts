@@ -1,6 +1,6 @@
 /** The room's persisted shape and the pure helpers that read it. */
 
-import type { PauseInfo, PlayerInfo, RoomInfo } from '@five-kingdoms/protocol';
+import type { PauseInfo, PlayerInfo, RoomInfo, RoundScoredEvent } from '@five-kingdoms/protocol';
 
 export interface StoredPlayer {
   seat: number;
@@ -30,6 +30,12 @@ export interface RoomState {
   pause: StoredPause | null;
   /** Bumped on every accepted game change; clients use it to spot gaps. */
   version: number;
+  /**
+   * The newest `roundScored` event, kept so a client that reconnects at the scoreboard can
+   * still show the leftover cards. Cleared when the next round starts or on rematch.
+   * Optional because rooms stored before this field existed lack it.
+   */
+  lastRoundScored?: RoundScoredEvent | null;
 }
 
 /** The engine player id for a seat. Seats are dense (0..n-1), so seat = engine index. */
@@ -46,6 +52,7 @@ export function newRoomState(code: string, maxSeats = 7): RoomState {
     continued: [],
     pause: null,
     version: 0,
+    lastRoundScored: null,
   };
 }
 
