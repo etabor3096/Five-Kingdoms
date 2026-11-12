@@ -1,12 +1,15 @@
 /**
  * The seam between the UI and wherever the game actually runs.
  *
- * The UI only ever talks to a `GameClient`. Today the one implementation is the in-memory,
- * dev-only `LocalGameClient`; a later task adds a WebSocket client with the same shape.
+ * The UI only ever talks to a `GameClient`. There are two implementations: `RemoteGameClient`
+ * (a WebSocket to the room server, the default) and the in-memory, dev-only `LocalGameClient`.
  * Everything crossing this boundary is plain JSON-safe data.
  */
 
 import type { Action, ErrorCode, GameEvent, GameView } from '@five-kingdoms/engine';
+import type { EmoteId } from '@five-kingdoms/protocol';
+
+export type { EmoteId };
 
 /** Who the player is on this device (persisted locally). */
 export interface Profile {
@@ -21,7 +24,20 @@ export interface RoomPlayer {
   avatar: string;
   ready: boolean;
   isHost: boolean;
+  /** False while the player's socket is down ("away"). */
   connected: boolean;
+  /** True while the host has chosen to auto-play this player's turns. */
+  skipped: boolean;
+}
+
+/** Set while the game is paused waiting for away players. */
+export interface PauseState {
+  /** Ids of the players the table is waiting for. */
+  awayIds: string[];
+  /** Epoch ms (server clock) when the grace period ends. */
+  deadline: number;
+  /** True once the deadline has passed; the host may then wait longer or skip. */
+  expired: boolean;
 }
 
 export interface RoomSettings {
@@ -40,11 +56,14 @@ export interface RoomState {
   phase: RoomPhase;
   settings: RoomSettings;
   players: RoomPlayer[];
+  /** Non-null while play is paused for an away player. */
+  pause: PauseState | null;
+  /** Ids of players who already pressed Continue on the round-end scoreboard. */
+  continuedIds: string[];
 }
 
-/** The eight quick emotes. */
-export const EMOTE_IDS = ['nice', 'haha', 'wow', 'grr', 'hmm', 'clap', 'oops', 'hurry'] as const;
-export type EmoteId = (typeof EMOTE_IDS)[number];
+/** Whether the client's link to the server is up. The local harness is always `online`. */
+export type ConnectionState = 'online' | 'reconnecting';
 
 export interface EmoteEvent {
   playerId: string;
@@ -60,7 +79,18 @@ export type RoomErrorCode =
   | 'NOT_READY'
   | 'NOT_ENOUGH_PLAYERS'
   | 'BAD_SETTINGS'
-  | 'WRONG_ROOM_PHASE';
+  | 'WRONG_ROOM_PHASE'
+  | 'ROOM_STARTED'
+  | 'BAD_TOKEN'
+  | 'PROTOCOL_VERSION'
+  | 'PAUSED'
+  | 'RATE_LIMITED'
+  | 'NO_SUCH_SEAT'
+  | 'BAD_MESSAGE'
+  /** The server could not be reached, or the connection dropped. */
+  | 'NETWORK'
+  /** Another tab or device took over this seat. */
+  | 'REPLACED';
 
 export interface ClientError {
   code: ErrorCode | RoomErrorCode;
@@ -96,6 +126,8 @@ export interface GameClient {
   /** After the game ends: back to the lobby with the same room and seats, scores reset. */
   rematch(): Promise<void>;
   sendEmote(emote: EmoteId): Promise<void>;
+  /** Host only, after an away player's grace period ends: wait 60s more, or auto-play their turns. */
+  hostDecision(playerId: string, decision: 'wait' | 'skip'): Promise<void>;
 
   // ---- subscriptions
   onRoom(listener: (room: RoomState | null) => void): Unsubscribe;
@@ -105,11 +137,13 @@ export interface GameClient {
   onEvents(listener: (events: GameEvent[]) => void): Unsubscribe;
   onEmote(listener: (emote: EmoteEvent) => void): Unsubscribe;
   onError(listener: (error: ClientError) => void): Unsubscribe;
+  /** Link state to the server; replays the current value on subscribe. */
+  onConnection(listener: (state: ConnectionState) => void): Unsubscribe;
 }
 
-/** Characters used in room codes: no 0/O or 1/I to avoid mix-ups. */
-export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-export const ROOM_CODE_LENGTH = 4;
+/** Characters used in room codes: no 0/O, 1/I or L to avoid mix-ups. Matches the server. */
+export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const ROOM_CODE_LENGTH = 5;
 
 /** Upper-cases and strips anything that cannot be in a room code. */
 export function normalizeRoomCode(input: string): string {

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { Action, CardId, GameView } from '@five-kingdoms/engine';
+import { PauseBanner } from '../components/PauseBanner';
 import { Btn, DevBadge, Txt } from '../components/ui';
+import { isDevHarness } from '../net/LocalGameClient';
 import { CardFace } from '../components/cards/CardFace';
 import { ArrangeSheet } from '../components/table/ArrangeSheet';
 import { EmotePicker } from '../components/table/EmotePicker';
@@ -132,7 +134,7 @@ export function TableScreen() {
         </View>
       </View>
       <View style={styles.topRight}>
-        <DevBadge />
+        {isDevHarness(client) && <DevBadge />}
         <Btn label="Leave" variant="ghost" size={16} onPress={() => void client.leave()} />
       </View>
 
@@ -188,6 +190,11 @@ export function TableScreen() {
           onPress={() => setOrder(sortedOrder(view.hand))}
         />
       </View>
+
+      <PauseBanner
+        room={room}
+        onDecide={(ids, decision) => ids.forEach((id) => void client.hostDecision(id, decision))}
+      />
 
       <EmotePicker left={30} top={540} onPick={(e) => void client.sendEmote(e)} />
 

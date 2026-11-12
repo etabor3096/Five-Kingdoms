@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { EMOTE_IDS, type EmoteId } from '@five-kingdoms/protocol';
 import { EMOTES } from '../../design/emotes';
 import { COLORS } from '../../design/tokens';
-import { EMOTE_IDS, type EmoteId } from '../../net/GameClient';
 import { Btn, Txt } from '../ui';
 
 /** The emote button and its popup of eight quick emotes. */

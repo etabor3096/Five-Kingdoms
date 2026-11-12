@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { Canvas } from '../components/Canvas';
+import { Overlays } from '../components/Overlays';
 import { Toast } from '../components/Toast';
 import { selectScreen } from '../state/screens';
 import { useSnapshot } from '../state/ClientContext';
@@ -24,6 +25,7 @@ export function AppFlow() {
         {screen === 'scoreboard' && <ScoreboardScreen />}
         {screen === 'standings' && <StandingsScreen />}
       </View>
+      <Overlays />
       <Toast />
     </Canvas>
   );
