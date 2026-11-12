@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Five Kingdoms",
+    "slug": "five-kingdoms",
+    "scheme": "fivekingdoms",
+    "version": "0.0.0",
+    "orientation": "landscape",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b1d1a",
+    "ios": { "supportsTablet": true, "requireFullScreen": true },
+    "android": {},
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "Five Kingdoms",
+      "shortName": "Five Kingdoms",
+      "backgroundColor": "#0b1d1a",
+      "themeColor": "#0b1d1a"
+    },
+    "plugins": ["expo-router"],
+    "experiments": { "autolinkingModuleResolution": true }
+  }
+}
