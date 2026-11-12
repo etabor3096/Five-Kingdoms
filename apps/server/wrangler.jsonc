@@ -1,3 +1,9 @@
+// Room server: one Worker plus the `Room` Durable Object class.
+//
+// Top level is the local config used by `wrangler dev` and the tests. Each deployed environment
+// lives under `env` and maps to a branch in the promotion chain (demo → dev → staging → main).
+// `durable_objects` is not inherited by environments, so every env repeats the binding.
+// Deploy with `scripts/deploy.sh <env>`, never by hand from a feature branch.
 {
   "name": "five-kingdoms-server",
   "main": "src/index.ts",
@@ -6,4 +12,18 @@
     "bindings": [{ "name": "ROOM", "class_name": "Room" }],
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "env": {
+    "demo": {
+      "durable_objects": { "bindings": [{ "name": "ROOM", "class_name": "Room" }] },
+    },
+    "dev": {
+      "durable_objects": { "bindings": [{ "name": "ROOM", "class_name": "Room" }] },
+    },
+    "staging": {
+      "durable_objects": { "bindings": [{ "name": "ROOM", "class_name": "Room" }] },
+    },
+    "production": {
+      "durable_objects": { "bindings": [{ "name": "ROOM", "class_name": "Room" }] },
+    },
+  },
 }

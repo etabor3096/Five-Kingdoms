@@ -1,0 +1,16 @@
+// Web client: a static-assets-only Worker serving the Expo web export in `dist`.
+//
+// `single-page-application` serves `index.html` for unknown paths, matching Expo's
+// `web.output: "single"`. One env per branch in the promotion chain (demo → dev → staging → main).
+// Build and deploy with `scripts/deploy.sh <env>`, which bakes the server URL into the bundle.
+{
+  "name": "five-kingdoms-web",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./dist", "not_found_handling": "single-page-application" },
+  "env": {
+    "demo": {},
+    "dev": {},
+    "staging": {},
+    "production": {},
+  },
+}

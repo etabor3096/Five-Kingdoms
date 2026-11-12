@@ -277,13 +277,13 @@ Notes:
 
 Private distribution to friends and family. Store publishing is out of scope.
 
-| Platform   | Approach                                                                                   | Cost                           | Notes                                                                  |
-| ---------- | ------------------------------------------------------------------------------------------ | ------------------------------ | ---------------------------------------------------------------------- |
-| Web / PWA  | Expo web export hosted on Cloudflare Pages (candidate). iPhone users "Add to Home Screen". | Free                           | MVP primary target.                                                    |
-| macOS      | Electron wrapping the web build                                                            | Free                           | Unsigned for now: users must approve it in Gatekeeper on first launch. |
-| Windows    | Electron wrapping the web build                                                            | Free                           | Unsigned for now: SmartScreen warning on first launch.                 |
-| iOS native | Expo build via TestFlight                                                                  | $99/yr Apple Developer Program | Deferred until the owner pays. Tested in the iOS simulator meanwhile.  |
-| Android    | Expo build                                                                                 | Later                          | After the MVP. Avoid iOS-only choices in the meantime.                 |
+| Platform   | Approach                                                                                           | Cost                           | Notes                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| Web / PWA  | Expo web export served by a static-assets Worker on Cloudflare. iPhone users "Add to Home Screen". | Free                           | MVP primary target.                                                    |
+| macOS      | Electron wrapping the web build                                                                    | Free                           | Unsigned for now: users must approve it in Gatekeeper on first launch. |
+| Windows    | Electron wrapping the web build                                                                    | Free                           | Unsigned for now: SmartScreen warning on first launch.                 |
+| iOS native | Expo build via TestFlight                                                                          | $99/yr Apple Developer Program | Deferred until the owner pays. Tested in the iOS simulator meanwhile.  |
+| Android    | Expo build                                                                                         | Later                          | After the MVP. Avoid iOS-only choices in the meantime.                 |
 
 Before any public release: do a trademark check on the name. "Five Crowns" is a Set Enterprises / PlayMonster trademark, and "Five Kingdoms" must be checked for conflicts and for being confusingly similar.
 
@@ -304,11 +304,12 @@ Reasoning is in [ADR 0003](adr/0003-web-pwa-and-electron-mvp.md).
 
 ## 13. CI & workflow
 
-- One GitHub PR per feature, into `main`.
+- Branches form a promotion chain: `demo` → `dev` → `staging` → `main`. Each has its own Cloudflare environment (`main` deploys `production`).
+- One GitHub PR per feature, into `demo`, squash-merged. Promotion PRs move one step up the chain with a merge commit.
 - GitHub Actions CI runs on every PR: typecheck, lint, format check, and tests (all packages via pnpm workspaces).
 - Conventional commit messages (`feat:`, `fix:`, `docs:`, and so on).
 - Docs changes (like this one) go through the same PR flow. ADRs are added or superseded rather than rewritten.
-- Desktop and web build jobs are added as those apps arrive. No deploy automation is committed to until hosting is verified.
+- Deploys are manual: `scripts/deploy.sh <env>`, with `scripts/deploy-wizard.sh` for first-time Cloudflare setup. CI deploy automation waits until hosting is verified in play-tests.
 
 ## 14. Milestones
 
@@ -321,7 +322,7 @@ No hard date. Stretch goal: a rough playable web version by winter break.
 | 3   | UNO-style UI polish                      | Animations, sound effects, emotes, scoreboard, final standings, Rematch, optional turn timer, Five Kingdoms card art. |
 | 4   | Desktop apps                             | Electron builds for macOS and Windows distributed privately.                                                          |
 
-Status: milestones 1 and 2 have a working proof of concept in PRs #1, #4, #5 and #6, which target `dev`.
+Status: milestones 1 and 2 have a working proof of concept (PRs #1, #4, #5, and #6 re-landed as #9), deployable with `scripts/deploy.sh`. Milestone 2 is done once a full game has been played with friends on a deployed environment.
 
 After the milestones: native iOS (TestFlight), Android, then the "later" list: text chat, voice, profile customization, stats, accounts, async play, house rules, bots.
 

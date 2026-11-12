@@ -6,8 +6,10 @@ authoritative server (Cloudflare Workers / Durable Objects) and in the React Nat
 
 ## Layout
 
-- `packages/engine` – `@five-kingdoms/engine`: deterministic, dependency-free rules engine.
-- `apps/` – server and client apps (to come).
+- `packages/engine`: `@five-kingdoms/engine`, the deterministic, dependency-free rules engine.
+- `packages/protocol`: `@five-kingdoms/protocol`, wire types and the client-message validator.
+- `apps/server`: the room server, a Cloudflare Worker plus the `Room` Durable Object.
+- `apps/client`: the Expo + React Native + react-native-web client.
 
 ## Development
 
@@ -35,3 +37,13 @@ so the two tabs behave like two devices: `localhost:8081/?profile=a` and
 
 - `EXPO_PUBLIC_SERVER_URL` points the client at another server (default `http://localhost:8787`).
 - `?dev=1` (web) or `EXPO_PUBLIC_DEV_HARNESS=1` swaps in the offline in-memory harness.
+
+## Branches and deploys
+
+Work flows up a promotion chain: **`demo` → `dev` → `staging` → `main`**. Feature PRs target
+`demo`; promotion PRs move one step up with a merge commit. Each branch deploys to its own
+Cloudflare environment (`main` is `production`).
+
+- First time on a Cloudflare account: `scripts/deploy-wizard.sh` walks through login, the
+  first deploy, and an optional scoped API token.
+- After that: `scripts/deploy.sh <demo|dev|staging|production>` from that environment's branch.
