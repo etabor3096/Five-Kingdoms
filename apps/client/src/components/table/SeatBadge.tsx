@@ -55,7 +55,7 @@ export function SeatBadge({
   return (
     <View
       style={[styles.seat, { left: x - 80, top: y - 46 }]}
-      accessibilityLabel={`${player.name}, ${player.handCount} cards${isTurn ? ', their turn' : ''}`}
+      accessibilityLabel={`${player.name}${profile?.isHost ? ' (host)' : ''}, ${player.handCount} cards${isTurn ? ', their turn' : ''}${profile && !profile.connected ? ', away' : ''}${profile?.skipped ? ', skipped' : ''}`}
     >
       {emote && (
         <Animated.View
@@ -86,6 +86,7 @@ export function SeatBadge({
         )}
       </View>
       <Txt size={18} weight="700" numberOfLines={1} style={styles.name}>
+        {profile?.isHost ? '👑 ' : ''}
         {player.name}
       </Txt>
       <View style={styles.row}>
@@ -93,6 +94,20 @@ export function SeatBadge({
           <View style={styles.chip}>
             <Txt size={15} weight="800">
               🂠 {player.handCount}
+            </Txt>
+          </View>
+        )}
+        {profile && !profile.connected && (
+          <View style={[styles.chip, { backgroundColor: COLORS.danger }]}>
+            <Txt size={15} weight="800" color="#1f0905">
+              AWAY
+            </Txt>
+          </View>
+        )}
+        {profile?.skipped && (
+          <View style={[styles.chip, { backgroundColor: COLORS.panelBorder }]}>
+            <Txt size={15} weight="800">
+              skipped
             </Txt>
           </View>
         )}

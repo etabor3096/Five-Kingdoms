@@ -155,8 +155,8 @@ describe('LocalGameClient lobby', () => {
     expect(state.errors.at(-1)?.code).toBe('ROOM_NOT_FOUND');
     expect(state.room).toBeNull();
 
-    await client.joinRoom('  abcd ', profile);
-    expect(state.room?.code).toBe('ABCD');
+    await client.joinRoom('  abcde ', profile);
+    expect(state.room?.code).toBe('ABCDE');
     expect(state.room?.hostId).not.toBe(LOCAL_PLAYER_ID);
     await client.start();
     expect(state.errors.at(-1)?.code).toBe('NOT_HOST');

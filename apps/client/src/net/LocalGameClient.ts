@@ -26,6 +26,7 @@ import {
   isValidRoomCode,
   normalizeRoomCode,
   type ClientError,
+  type ConnectionState,
   type EmoteEvent,
   type EmoteId,
   type GameClient,
@@ -72,6 +73,7 @@ type Listeners = {
   events: Set<(events: GameEvent[]) => void>;
   emote: Set<(emote: EmoteEvent) => void>;
   error: Set<(error: ClientError) => void>;
+  connection: Set<(state: ConnectionState) => void>;
 };
 
 export class LocalGameClient implements GameClient, DevHarness {
@@ -89,6 +91,7 @@ export class LocalGameClient implements GameClient, DevHarness {
     events: new Set(),
     emote: new Set(),
     error: new Set(),
+    connection: new Set(),
   };
 
   constructor(options: LocalGameClientOptions = {}) {
@@ -121,6 +124,8 @@ export class LocalGameClient implements GameClient, DevHarness {
       phase: 'lobby',
       settings: { maxSeats },
       players,
+      pause: null,
+      continuedIds: [],
     };
     this.publishRoom();
     return Promise.resolve();
@@ -144,6 +149,8 @@ export class LocalGameClient implements GameClient, DevHarness {
       phase: 'lobby',
       settings: { maxSeats: clamp(bots.length + 1, 2, 7) },
       players: [...bots, this.selfPlayer(false)],
+      pause: null,
+      continuedIds: [],
     };
     this.publishRoom();
     return Promise.resolve();
@@ -243,6 +250,11 @@ export class LocalGameClient implements GameClient, DevHarness {
     return Promise.resolve();
   }
 
+  hostDecision(): Promise<void> {
+    this.fail('WRONG_ROOM_PHASE', 'Nobody is ever away in the dev harness');
+    return Promise.resolve();
+  }
+
   // ------------------------------------------------------------ subscriptions
 
   onRoom(listener: (room: RoomState | null) => void): Unsubscribe {
@@ -263,6 +275,10 @@ export class LocalGameClient implements GameClient, DevHarness {
 
   onError(listener: (error: ClientError) => void): Unsubscribe {
     return this.subscribe(this.listeners.error, listener);
+  }
+
+  onConnection(listener: (state: ConnectionState) => void): Unsubscribe {
+    return this.subscribe(this.listeners.connection, listener, () => listener('online'));
   }
 
   // ------------------------------------------------------------ dev harness
@@ -352,6 +368,7 @@ export class LocalGameClient implements GameClient, DevHarness {
       ready: false,
       isHost,
       connected: true,
+      skipped: false,
     };
   }
 
@@ -366,6 +383,7 @@ export class LocalGameClient implements GameClient, DevHarness {
         ready: true,
         isHost: false,
         connected: true,
+        skipped: false,
       };
     });
   }
