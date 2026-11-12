@@ -16,7 +16,8 @@ Run from the repo root (or drop `--filter` inside `apps/server`):
 | `pnpm --filter @five-kingdoms/server typecheck`   | `tsc --noEmit`                                        |
 | `pnpm --filter @five-kingdoms/server build:check` | `wrangler deploy --dry-run --outdir dist` (no deploy) |
 
-Nothing here logs in to Cloudflare or deploys.
+None of these log in to Cloudflare or deploy. Deploys go through `scripts/deploy.sh <env>` at the repo root,
+which uses the `env` blocks in `wrangler.jsonc` (`demo`, `dev`, `staging`, `production`).
 
 ## Routes
 
@@ -25,7 +26,7 @@ Nothing here logs in to Cloudflare or deploys.
   claim it (`Room.create`), and tries a new code if the room already exists.
 - `GET /rooms/:code/ws` upgrades to a WebSocket handled by that Room. An unknown or expired
   room answers `404`; a request without `Upgrade: websocket` answers `426`.
-- CORS is wide open (`*`) for local development.
+- CORS is wide open (`*`), for local development and so the separately hosted web client can call `POST /rooms`.
 
 ## Message flow
 

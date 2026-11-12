@@ -33,6 +33,7 @@
     "react-native-worklets": "0.13.0"
   },
   "devDependencies": {
-    "@types/react": "~19.3.0"
+    "@types/react": "~19.3.0",
+    "wrangler": "4.160.1"
   }
 }
