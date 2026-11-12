@@ -5,7 +5,7 @@ Domain terms used across the [SDD](SDD.md), [rules](rules.md), and code. Use the
 ## Game terms
 
 **Round**
-One of the 11 deals in a game. Round *n* deals *n* + 2 cards to each player and ends after the final turns.
+One of the 11 deals in a game. Round _n_ deals _n_ + 2 cards to each player and ends after the final turns.
 
 **Hand**
 The cards a player holds and has not laid down. Only its owner sees it.

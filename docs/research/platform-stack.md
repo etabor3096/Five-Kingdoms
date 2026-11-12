@@ -6,36 +6,36 @@ Method note: pages were read through a fetch tool that summarises content, so qu
 
 ## TL;DR
 
-| Stack choice | Verdict | One-line reason |
-|---|---|---|
-| Cloudflare Workers + SQLite Durable Objects, free plan | **GO** | SQLite DOs are free-plan eligible; estimated load is 2-20% of daily limits (see Q1). |
-| pnpm monorepo, shared pure-TS engine | **GO** | Expo supports pnpm isolated installs from SDK 54; Wrangler bundles with esbuild. Verify workspace import with a smoke test (docs silent). |
-| Expo SDK 58 + RN + react-native-web, one UI codebase | **GO, with caveats** | Web is a first-class target; Reanimated on web is a JS implementation, so budget perf testing for the drag/animation table. |
-| PWA on iPhone (Add to Home Screen) | **GO, with mandatory workarounds** | Orientation lock is impossible on iOS Safari; need a rotate-device overlay, and tolerant reconnect logic. |
-| Electron wrapper (unsigned) macOS + Windows | **GO for macOS, CONDITIONAL for Windows** | Windows 11 Smart App Control can hard-block unsigned apps with no "Run anyway". Keep the PWA as the Windows fallback. |
-| react-native-macos / react-native-windows | **NO-GO (confirmed, not needed)** | Lag core RN; Expo SDK 58 does not support macOS. |
+| Stack choice                                           | Verdict                                   | One-line reason                                                                                                                           |
+| ------------------------------------------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Cloudflare Workers + SQLite Durable Objects, free plan | **GO**                                    | SQLite DOs are free-plan eligible; estimated load is 2-20% of daily limits (see Q1).                                                      |
+| pnpm monorepo, shared pure-TS engine                   | **GO**                                    | Expo supports pnpm isolated installs from SDK 54; Wrangler bundles with esbuild. Verify workspace import with a smoke test (docs silent). |
+| Expo SDK 58 + RN + react-native-web, one UI codebase   | **GO, with caveats**                      | Web is a first-class target; Reanimated on web is a JS implementation, so budget perf testing for the drag/animation table.               |
+| PWA on iPhone (Add to Home Screen)                     | **GO, with mandatory workarounds**        | Orientation lock is impossible on iOS Safari; need a rotate-device overlay, and tolerant reconnect logic.                                 |
+| Electron wrapper (unsigned) macOS + Windows            | **GO for macOS, CONDITIONAL for Windows** | Windows 11 Smart App Control can hard-block unsigned apps with no "Run anyway". Keep the PWA as the Windows fallback.                     |
+| react-native-macos / react-native-windows              | **NO-GO (confirmed, not needed)**         | Lag core RN; Expo SDK 58 does not support macOS.                                                                                          |
 
 ### Recommended pins (npm registry state on 2026-11-11)
 
-| Package | Pin | Source / note |
-|---|---|---|
-| Node | 24.x (>= 24.3) or 22.x (>= 22.13); no odd majors | [Expo SDK 58 changelog](https://expo.dev/changelog/sdk-58), 2026-10-15 |
-| pnpm | 12.x (npm latest 12.18.0) | [npm registry](https://registry.npmjs.org/pnpm/latest) |
-| expo | ~58.0.24 | [npm registry](https://registry.npmjs.org/expo/latest) |
-| react-native | 0.88.1 | [SDK 58 bundledNativeModules](https://raw.githubusercontent.com/expo/expo/sdk-58/packages/expo/bundledNativeModules.json) |
-| react / react-dom | 19.3.0 | same |
-| react-native-web | ~0.21.4 | same |
-| react-native-reanimated / react-native-worklets | 4.7.1 / 0.13.0 | same |
-| react-native-gesture-handler | ~3.3.0 | same |
-| react-native-svg | 15.16.0 | same |
-| @shopify/react-native-skia (optional) | 2.14.0 | same |
-| expo-router | ~58.0.31 | same |
-| wrangler | ^4.160.1 | [npm registry](https://registry.npmjs.org/wrangler/latest), [releases](https://github.com/cloudflare/workers-sdk/releases) |
-| @cloudflare/vitest-plugin (NOT vitest-pool-workers) | ^1.8.0 | see Q1; peer `vitest ^4.1 \|\| ^5` |
-| vitest | ^5.1.0 | [npm registry](https://registry.npmjs.org/vitest/latest) |
-| electron | 45.3.1 (stable; 44.11.2 and 43.8.9 also supported) | [releases.electronjs.org](https://releases.electronjs.org/) |
-| electron-builder | 26.18.0 | [npm registry](https://registry.npmjs.org/electron-builder/latest) |
-| TypeScript | use the version the Expo SDK 58 template pins | npm latest is 7.0.2, but Expo SDK 58 compatibility with TS 7 is **UNVERIFIED** |
+| Package                                             | Pin                                                | Source / note                                                                                                              |
+| --------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Node                                                | 24.x (>= 24.3) or 22.x (>= 22.13); no odd majors   | [Expo SDK 58 changelog](https://expo.dev/changelog/sdk-58), 2026-10-15                                                     |
+| pnpm                                                | 12.x (npm latest 12.18.0)                          | [npm registry](https://registry.npmjs.org/pnpm/latest)                                                                     |
+| expo                                                | ~58.0.24                                           | [npm registry](https://registry.npmjs.org/expo/latest)                                                                     |
+| react-native                                        | 0.88.1                                             | [SDK 58 bundledNativeModules](https://raw.githubusercontent.com/expo/expo/sdk-58/packages/expo/bundledNativeModules.json)  |
+| react / react-dom                                   | 19.3.0                                             | same                                                                                                                       |
+| react-native-web                                    | ~0.21.4                                            | same                                                                                                                       |
+| react-native-reanimated / react-native-worklets     | 4.7.1 / 0.13.0                                     | same                                                                                                                       |
+| react-native-gesture-handler                        | ~3.3.0                                             | same                                                                                                                       |
+| react-native-svg                                    | 15.16.0                                            | same                                                                                                                       |
+| @shopify/react-native-skia (optional)               | 2.14.0                                             | same                                                                                                                       |
+| expo-router                                         | ~58.0.31                                           | same                                                                                                                       |
+| wrangler                                            | ^4.160.1                                           | [npm registry](https://registry.npmjs.org/wrangler/latest), [releases](https://github.com/cloudflare/workers-sdk/releases) |
+| @cloudflare/vitest-plugin (NOT vitest-pool-workers) | ^1.8.0                                             | see Q1; peer `vitest ^4.1 \|\| ^5`                                                                                         |
+| vitest                                              | ^5.1.0                                             | [npm registry](https://registry.npmjs.org/vitest/latest)                                                                   |
+| electron                                            | 45.3.1 (stable; 44.11.2 and 43.8.9 also supported) | [releases.electronjs.org](https://releases.electronjs.org/)                                                                |
+| electron-builder                                    | 26.18.0                                            | [npm registry](https://registry.npmjs.org/electron-builder/latest)                                                         |
+| TypeScript                                          | use the version the Expo SDK 58 template pins      | npm latest is 7.0.2, but Expo SDK 58 compatibility with TS 7 is **UNVERIFIED**                                             |
 
 Pin Expo-managed native modules with `npx expo install`, not by hand, so they track the SDK's bundled versions.
 
@@ -79,6 +79,7 @@ Pin Expo-managed native modules with `npx expo install`, not by hand, so they tr
 ### Usage estimate
 
 Assumptions (mine, stated so they can be challenged):
+
 - 5 concurrent rooms x 7 players = 35 sockets, one 3 h (10,800 s) game night per UTC day.
 - Reconnects: 5 per player per night, 35 x (1 + 5) = 210 upgrade requests.
 - Scenario A (realistic): each player sends 1 message per 10 s on average for the full 3 h (a Five Crowns turn is draw + discard + maybe reorder; this is generous).
@@ -87,14 +88,15 @@ Assumptions (mine, stated so they can be challenged):
 
 Requests:
 
-| | Incoming msgs | /20 billing ratio | + upgrades (210) | % of 100k/day |
-|---|---|---|---|---|
-| A | 35 x 1,080 = 37,800 | 1,890 | ~2,100 | ~2% |
-| B | 35 x 10,800 = 378,000 | 18,900 | ~19,100 | ~19% |
+|     | Incoming msgs         | /20 billing ratio | + upgrades (210) | % of 100k/day |
+| --- | --------------------- | ----------------- | ---------------- | ------------- |
+| A   | 35 x 1,080 = 37,800   | 1,890             | ~2,100           | ~2%           |
+| B   | 35 x 10,800 = 378,000 | 18,900            | ~19,100          | ~19%          |
 
 Even if 10 s application heartbeats are also billed (worst case): 35 x 1,080 more = +1,890. Still under 5%.
 
 Duration (5 DOs, 10,800 s each, 0.125 GB):
+
 - **Without hibernation:** 5 x 10,800 x 0.125 = **6,750 GB-s/day = 52% of 13,000.** Break-even is 13,000 / 1,350 = ~9.6 DO-nights of 3 h per UTC day. Two 5-room nights on the same UTC day would exceed it. A US-evening game night straddles 00:00 UTC, which splits usage across two daily buckets and helps.
 - **With hibernation:** idle-eligible time is free. During active play with messages every ~10 s or faster the DO is likely not idle long enough to hibernate, so expect savings mainly in lobbies, between rounds, and when players are AFK. Upper bound is still 6,750 GB-s. Treat hibernation as "free headroom", not a requirement. Do not hold a `setInterval` turn timer in memory if you want it; use a single alarm only when needed, since alarms prevent hibernation.
 
@@ -109,6 +111,7 @@ Conclusion: the free tier fits "several nights a week", as long as the same UTC 
 - **Importing a pnpm workspace package from the Worker:** Wrangler "bundles your Worker code using esbuild" and supports npm imports and the `workerd` export condition ([bundling](https://developers.cloudflare.com/workers/wrangler/bundling/)). The page does not mention monorepos or workspace TypeScript source: **UNVERIFIED in docs**. Verify with `wrangler deploy --dry-run --outdir dist`, which the page recommends for inspecting bundling. Practical recommendation: depend on `"@fk/engine": "workspace:*"` and point its `exports` at source `.ts` or a built `dist`; esbuild handles TS.
 
 ### Risks & gotchas
+
 - Free-plan overage makes operations fail until 00:00 UTC (no soft degradation). Add a visible "server busy" client state.
 - Wall-clock duration billing is the closest limit to bite; prevent idle rooms from living forever (evict empty rooms, avoid timers that block hibernation).
 - Server-side DO memory is lost on hibernation; keep authoritative game state in SQLite, rebuild in the constructor.
@@ -119,6 +122,7 @@ Conclusion: the free tier fits "several nights a week", as long as the same UTC 
 ## 2. Expo
 
 ### Verified facts
+
 - **Current SDK: 58** (released 2026-10-15; SDK 57 was 2026-06-30) ([Expo changelog](https://expo.dev/changelog)). "SDK 58 upgrades React Native from 0.86 to 0.88" ([SDK 58 post](https://expo.dev/changelog/sdk-58)). Bundled: RN 0.88.1, React 19.3.0, react-native-web ~0.21.4, Reanimated 4.7.1, worklets 0.13.0, Gesture Handler ~3.3.0, react-native-svg 15.16.0, Skia 2.14.0 ([sdk-58 bundledNativeModules.json](https://raw.githubusercontent.com/expo/expo/sdk-58/packages/expo/bundledNativeModules.json)). Note: `main` of that file already lists RN 0.89.0-rc.0 (SDK 59 in progress); use the `sdk-58` branch.
 - **SDK 58 notes relevant to us** ([post](https://expo.dev/changelog/sdk-58)): Node 22.13+/24.3+/26+ only; Expo Router no longer provides web safe-area insets via react-native-safe-area-context (use CSS `env(safe-area-inset-*)`), which matters for the iPhone notch in landscape; async routes on web by default; "SDK 58 does not support macOS yet."
 - **Web output modes** ([Publishing websites](https://docs.expo.dev/guides/publishing-websites/)): `single` (documented as the default; one `index.html`, SPA, host must rewrite all paths to `index.html`), `static` (per-route HTML), `server` (SSR on request, SDK 58+). The SDK 58 post's wording about server output "by default" conflicts with this page, so **set `web.output: "single"` explicitly**. A static SPA is all a card table needs and it can sit on any static host, or Workers Assets.
@@ -135,12 +139,14 @@ Conclusion: the free tier fits "several nights a week", as long as the same UTC 
 - **react-native-svg / Skia on web:** react-native-svg is bundled with SDK 58 and renders to DOM SVG via react-native-web (general knowledge, not re-verified on a doc page). **Skia on web (CanvasKit WASM, bundle size, loading) is UNVERIFIED**: the Skia web docs URLs I tried returned 404. Do not adopt Skia unless a need is proven.
 
 ### Perf recommendations for card drag-and-drop (design advice, not sourced claims)
+
 - Use Reanimated shared values + `transform` (translate/rotate/scale) and `opacity` only; avoid animating layout props (width, top/left). On web these become JS-driven style updates each frame, so keep concurrently animating cards low (hand of <= ~14 plus a few flying cards is fine on modern hardware; measure on an iPhone).
 - For web specifically, consider CSS transitions / Web Animations for non-interactive moves (deal, flip, discard fly-out) behind a thin wrapper, and Reanimated + Gesture Handler only for live drag.
 - Render the table as DOM/SVG rather than Skia to avoid WASM load cost and keep bundle small.
 - Lock to a fixed logical canvas (e.g. 16:9) and scale it, to keep layout math identical across phone, desktop, and Electron.
 
 ### Risks & gotchas
+
 - Reanimated web performance is lower than native by the maintainers' own statement; budget a perf spike with a 7-player table on an older iPhone before committing to animation-heavy design.
 - Expo web safe-area behavior changed in SDK 58: handle landscape notch insets with CSS `env()`.
 - Service-worker caching can strand users on stale builds; version the cache and add an update prompt.
@@ -151,6 +157,7 @@ Conclusion: the free tier fits "several nights a week", as long as the same UTC 
 ## 3. PWA on iOS Safari
 
 ### Verified facts
+
 - **Standalone from Home Screen:** yes. A manifest with `display` `standalone` (or `fullscreen`) makes it open "like any other app" outside Safari, with its own App Switcher entry ([WebKit blog, 2023-02-16](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)). Since Safari 26 (iOS 26), "every website added to the Home Screen opens as a web app" by default, though the user can switch "Open as Web App" off ([WebKit blog, 2025-09-15](https://webkit.org/blog/17333/webkit-features-in-safari-26-0/)). iPhone users on older iOS still need a manifest or meta tag.
 - **`display: "fullscreen"` is not supported on iOS Safari** per MDN browser-compat-data (`manifests/webapp/display.json`: safari_ios fullscreen "mirror" of desktop Safari's `false`; `standalone` since 11.3) ([display.json](https://raw.githubusercontent.com/mdn/browser-compat-data/main/manifests/webapp/display.json)). Use `standalone`; on iOS status-bar styling is controlled via `apple-mobile-web-app-status-bar-style` meta (general knowledge, **UNVERIFIED** this session).
 - **Orientation lock API:** `ScreenOrientation.lock()` and `unlock()`: Safari and iOS Safari `version_added: false` ([BCD ScreenOrientation.json](https://raw.githubusercontent.com/mdn/browser-compat-data/main/api/ScreenOrientation.json)). MDN also notes locking typically requires fullscreen and mobile ([MDN lock()](https://developer.mozilla.org/en-US/docs/Web/API/ScreenOrientation/lock)).
@@ -161,12 +168,14 @@ Conclusion: the free tier fits "several nights a week", as long as the same UTC 
 - **iOS 26.0 regression:** [WebKit bug 298616](https://bugs.webkit.org/show_bug.cgi?id=298616) (reported 2025-09-09): WebSocket handshakes failed (HTTP 400) in Safari and standalone mode on iOS 26, apparently over HTTP/3; workaround was disabling HTTP/3 on the server; fixed in iOS 26.1 (confirmed 2025-11-05). Cloudflare serves HTTP/3 by default, so iOS 26.0 devices could be hit; the 26.1+ fix means this is mostly historical in Nov 2026.
 
 ### Implications for the 60 s reconnect grace
+
 - A phone that locks or app-switches may be suspended within seconds and its socket silently dropped, so the server will see the close (or an app-level heartbeat timeout) and start the grace period. A 60 s grace is workable for quick app switches, but a player who locks the phone for >60 s loses the seat unless you extend or make it soft.
 - Client: on `visibilitychange` to visible (and `pageshow`), immediately check the socket (send a ping, expect a pong within ~2 s) and reconnect with a session token; do not trust `readyState`.
 - Server: identify players by a session token stored in `localStorage`; keep seats reserved (marked "away") and auto-play or skip turns rather than evicting. Consider 60 s for "disconnected" UI and a longer hard eviction.
 - Heartbeat: use `setWebSocketAutoResponse` so pings do not wake or bill the DO.
 
 ### Risks & gotchas
+
 - No orientation lock on iOS: overlay is mandatory; Portrait lock in Control Center defeats rotation.
 - Home Screen web apps are separate storage contexts from Safari: players who first joined in Safari then installed lose `localStorage` session; use a join code + name rejoin flow.
 - Autoplay: first sound must follow a tap; audio can be interrupted by phone calls/silent mode (iOS ring switch behavior for Web Audio is **UNVERIFIED**).
@@ -177,6 +186,7 @@ Conclusion: the free tier fits "several nights a week", as long as the same UTC 
 ## 4. Electron
 
 ### Verified facts
+
 - **Current stable: Electron 45.3.1** (Chromium 156.0.8078.96, Node 24.22.2, released 2026-11-11); supported lines are the latest three majors: 45.3.1, 44.11.2, 43.8.9 ([releases.electronjs.org](https://releases.electronjs.org/); policy in [timelines](https://www.electronjs.org/docs/latest/tutorial/electron-timelines): new major every 8 weeks, latest three supported). The fast cadence means upgrading every ~6 months at minimum.
 - **Forge vs electron-builder:**
   - Electron Forge is at **8.0.1** (2026-09-29); v8 is ESM-only on Node 22+ ([GitHub release](https://api.github.com/repos/electron/forge/releases/latest)). With pnpm it requires `node-linker=hoisted` ([Forge docs](https://www.electronforge.io/)). Its Squirrel.Windows maker needs "A Windows machine, or a Linux machine with Mono and Wine"; macOS is not listed ([maker-squirrel README](https://raw.githubusercontent.com/electron/forge/main/packages/maker/squirrel/README.md)). Forge has other Windows makers (WiX, etc.), not evaluated here: **UNVERIFIED**.
@@ -193,6 +203,7 @@ Conclusion: the free tier fits "several nights a week", as long as the same UTC 
 ### What users see and EXACT bypass steps
 
 **macOS (Sequoia 15 and later, including current macOS 27)**
+
 - Apple Developer News: in macOS Sequoia, users can "no longer Control-click to override Gatekeeper" for software that is not signed correctly or notarized; they must use System Settings > Privacy & Security ([Apple developer news](https://developer.apple.com/news/?id=saqachfa)). Older Apple pages still describe Control-click; the developer announcement is the authority.
 - Steps ([Apple Support: Open a Mac app from an unidentified developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)):
   1. Open the app (double-click) and dismiss the block dialog.
@@ -203,18 +214,22 @@ Conclusion: the free tier fits "several nights a week", as long as the same UTC 
 - Distribute the DMG or ZIP via a GitHub Release; browser downloads set quarantine; the same file fetched with `curl` does not (**UNVERIFIED** this session).
 
 **Windows 10/11**
+
 - SmartScreen with no signature shows "Windows protected your PC"; the user must choose "Run anyway" (More info first); self-signed behaves the same ([Microsoft Learn, SmartScreen reputation, ms.date 2026-05-04](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)). Steps: run the installer > **More info** > **Run anyway**.
 - Unsigned files must build reputation anew for each version; EV certificates no longer bypass SmartScreen; Artifact Signing starts at $9.99/month and is the Microsoft-recommended non-Store route (same page). Out of budget, and not available in all countries per Electron docs.
 - **Windows 11 Smart App Control** "will block execution of unsigned files unless the file has a positive reputation" and checks all executables (same page). There is no "Run anyway" in that case. Users with Smart App Control on (typically fresh Windows 11 installs, **UNVERIFIED** here) must turn it off in Windows Security > App & browser control > Smart App Control (**UNVERIFIED** path) or use the PWA instead.
 
 ### Bundled build vs hosted URL
+
 **Recommendation: load the bundled web build through a custom `app://` protocol.** Reasons:
+
 - Works offline for the UI and lets the Electron app reuse the same `dist` as the PWA; the game server is still remote over `wss://`.
 - `file://` is non-standard: relative URLs, absolute-path assets (`/assets/...` from Expo's export), service workers, and `fetch` behave poorly. Electron's [protocol docs](https://www.electronjs.org/docs/latest/api/protocol) give an `app://` pattern: `registerSchemesAsPrivileged` (standard, secure, supportFetchAPI) before `ready`, then `protocol.handle` serving the bundle directory with path-traversal rejection. SPA fallback to `index.html` is a few lines in the handler.
 - Hosted URL is simpler (always up to date, no auto-update needed) but breaks without the host and means unsigned installers carry no code. Because unsigned apps cannot use Squirrel auto-update, a bundled build forces manual re-download for each client update. A reasonable hybrid: bundled shell that checks a version endpoint and tells players to re-download only when the wire protocol changes; keep protocol versioned and backwards compatible for a few weeks.
 - Set `contextIsolation: true`, no Node integration in the renderer, and restrict navigation to the `app://` origin and your Worker host ([Electron security checklist](https://www.electronjs.org/docs/latest/tutorial/security), standard guidance; not re-fetched).
 
 ### Risks & gotchas
+
 - Unsigned builds cannot auto-update on macOS (Squirrel.Mac needs signed app) and Windows users re-hit SmartScreen on every new version.
 - Windows Smart App Control can make the Windows build unusable for some users; the PWA is the fallback.
 - Expo web export uses absolute asset paths; serve from `app://` host root, not `file://`.
@@ -228,10 +243,12 @@ Conclusion: the free tier fits "several nights a week", as long as the same UTC 
 **Confirmed: both lag core React Native, and Expo SDK 58 doesn't support macOS.** From the npm registry on 2026-11-11, core `react-native` is 0.88.1 (published 2026-10-27) and 0.89.0-rc.1 is in `next`, while `react-native-macos@latest` is 0.83.0 (2026-09-30; peer `react-native` 0.83.10; its `next` tag is 0.81.0), about five minor versions behind, and `react-native-windows@latest` is 0.85.0 (2026-10-19; peer `react-native ^0.85.0`), three minors behind ([npm: react-native](https://registry.npmjs.org/react-native), [react-native-macos](https://registry.npmjs.org/react-native-macos), [react-native-windows](https://registry.npmjs.org/react-native-windows)). Expo SDK 58 states plainly that it "does not support macOS yet" ([SDK 58 post](https://expo.dev/changelog/sdk-58)), and its RN 0.88 is newer than either target, so Expo's pinned native libraries (Reanimated 4.7, Gesture Handler 3.3, worklets 0.13) cannot be assumed to match the macOS/Windows forks. Gesture Handler's docs list macOS as a platform ([getting started](https://docs.swmansion.com/react-native-gesture-handler/docs/fundamentals/getting-started/)), but per-library status for Reanimated 4 on macOS/Windows could not be verified from primary sources: **UNVERIFIED**; treat "animation libs are limited" as probable, not proven. Our Electron-on-web-build plan avoids the whole problem.
 
 ### Risks & gotchas
+
 - Choosing the native-desktop forks would pin the entire app below Expo SDK 58's RN and lose Expo tooling.
 - The versions above were read from npm at one moment and drift; re-check if this decision is revisited.
 
 ## Open items (all UNVERIFIED above, cheap to settle by experiment)
+
 1. Wrangler bundling a `workspace:*` TS package (run `wrangler deploy --dry-run --outdir dist`).
 2. DO WebSocket-handler CPU cap on Free (10 ms vs 30 s); measure CPU per move.
 3. Whether auto-response pings count in the 20:1 billing, and whether static assets/WS-upgrade Worker requests count against 100k.
