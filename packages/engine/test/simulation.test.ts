@@ -96,6 +96,12 @@ describe('bot simulations', () => {
     expect(c.final).not.toEqual(a.final);
   }, 60_000);
 
+  it('regression: seed 1361931876 with 2 players used to stall in round 3 and now finishes', () => {
+    const { final } = playGame(1361931876, 2);
+    expect(final.phase).toBe('gameOver');
+    expect(final.round).toBe(11);
+  }, 60_000);
+
   it('state survives a JSON round trip mid-game', () => {
     let state = createGame({ seed: 77, players: PLAYERS(3) });
     state = stepBot(state).state;
