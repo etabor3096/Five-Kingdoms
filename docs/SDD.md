@@ -129,6 +129,7 @@ pnpm workspace, all TypeScript ([ADR 0001](adr/0001-pnpm-monorepo.md)).
 | Path | Role |
 | ---- | ---- |
 | `packages/engine` | Shared pure rules engine. No I/O, no clocks, no platform APIs. |
+| `packages/protocol` | WebSocket message types shared by client and server, plus `PROTOCOL_VERSION`. |
 | `apps/client` | Expo + React Native + react-native-web: one UI codebase for web, desktop (via web build) and iOS ([ADR 0002](adr/0002-react-native-and-react-native-web.md)). |
 | `apps/server` | Cloudflare Worker plus a Durable Object class per room, WebSockets ([ADR 0004](adr/0004-cloudflare-durable-objects.md)). |
 | `apps/desktop` | Electron shell loading the built web client ([ADR 0003](adr/0003-web-pwa-and-electron-mvp.md)). |
@@ -187,34 +188,35 @@ A simple bot (draws, discards the highest unusable card, goes out when the solve
 
 ## 9. Networking protocol
 
-Transport: WebSocket per player to the room's Durable Object, JSON messages. The exact schema lives in code (shared types in the engine or a small protocol module) and is versioned.
+Transport: WebSocket per player to the room's Durable Object, JSON messages. The schema lives in code, in its own package, `packages/protocol` (`src/messages.ts`). It exports `PROTOCOL_VERSION`, which `join` must carry; the server rejects other versions.
 
-### 9.1 Message types (conceptual)
+### 9.1 Message types
 
 | Direction | Type | Purpose |
 | --------- | ---- | ------- |
-| Client → server | `join` | Join a room with code, display name, avatar, and a device-held rejoin token. |
+| Client → server | `join` | Join a room with code, display name, avatar, protocol version, and optionally a device-held rejoin token. |
 | Client → server | `ready`, `unready` | Lobby ready state. |
-| Client → server | `settings` | Host changes room settings (max seats, turn timer, and so on). |
+| Client → server | `settings` | Host changes room settings. Only max seats (2 to 7) exists so far; the turn timer is not built yet. |
 | Client → server | `start`, `rematch` | Host starts a game or a rematch. |
-| Client → server | `intent` | A game action: draw, discard, go out, final-turn melds, acknowledge scoreboard. |
+| Client → server | `intent` | A game action (draw, discard, go out, final-turn melds) plus the last view version the client has seen. The server-driven `startNextRound` is not a valid intent. |
+| Client → server | `continue` | Acknowledges the round-end scoreboard. Once every connected player has sent it, the server starts the next round. |
 | Client → server | `emote` | One of about 8 canned emotes. |
-| Client → server | `hostDecision` | After a disconnect grace period: wait, skip, or bot. |
-| Client → server | `ping` | Heartbeat. |
-| Server → client | `welcome` | Seat assignment, room info, current redacted view. |
+| Client → server | `hostDecision` | After a disconnect grace period: `wait` or `skip`. Bot handover is not built yet. |
+| Client → server | `ping` | Heartbeat. A plain `ping` string, not JSON. |
+| Server → client | `welcome` | Seat, room info, current redacted view (`null` in the lobby), version, and the rejoin token on a first join only. While the table is at the scoreboard or game over it also carries `lastRoundScored`, so a reconnecting player can see the round result. |
 | Server → client | `roomUpdate` | Lobby changes: players, ready state, settings, host. |
 | Server → client | `events` | Ordered game events (redacted), plus the new view version. |
 | Server → client | `view` | Full redacted view for resync (reconnect or detected gap). |
 | Server → client | `error` | A rejected intent or protocol error, with a code. |
 | Server → client | `presence` | Player connected, disconnected (with deadline), or returned. |
-| Server → client | `pong` | Heartbeat reply. |
+| Server → client | `pong` | Heartbeat reply, a plain string answered by the runtime without waking the Durable Object. |
 
 ### 9.2 Intent handling
 
-1. Client sends an `intent` with the last view version it knows.
+1. Client sends an `intent` with the last view version it knows (`lastVersion`).
 2. The DO checks that the sender owns the seat and it is their turn, then runs the engine reducer.
 3. On success, the DO persists state, then broadcasts the redacted `events` and a version bump to each player.
-4. On failure, only the sender gets an `error`. State is unchanged.
+4. On failure, only the sender gets an `error` (code `ENGINE`, carrying the engine's own code). State is unchanged. If `lastVersion` was behind, the sender also gets a full `view`.
 
 Clients animate from events and reconcile against the view. If a client's version has a gap, the server sends a full `view`.
 
@@ -234,23 +236,25 @@ stateDiagram-v2
   Closed --> [*]
 ```
 
-- Room codes are short, unambiguous (no 0/O or 1/I), and checked for collisions at creation.
+- Room codes are 5 characters from an unambiguous alphabet (no `0 O 1 I L`). The Worker proposes a code and retries with a new one if that room already exists.
 - A room lives while anyone is connected, plus 30 minutes (a Durable Object alarm). After that, state is deleted.
 - Joining is allowed only in the lobby (new players). Mid-game joins are rejoin only.
+- There is no Leave message yet. Leaving just disconnects and keeps the seat.
+- The host sends `rematch` from the final standings; the room returns to the lobby with the same seats, all unready.
 
 ### 9.4 Disconnects and reconnect
 
 1. On disconnect, the game **pauses** and a deadline of about 60 s starts. All players see who is gone and the countdown.
 2. If the player returns within the grace period (same rejoin token, same room code), they resume their seat and the game continues.
-3. If not, the **host** chooses: wait longer, skip the player's turns, or hand the seat to the simple bot.
-4. Skipping means an automatic draw-from-draw-pile and discard for each of that player's turns. Bot handover reuses the test bot, and the player can reclaim the seat by returning (open question 7).
+3. If not, the **host** chooses with `hostDecision`: `wait` (extend the deadline by another 60 s) or `skip`. Handing the seat to the simple bot is planned but not built yet.
+4. Skipping means an automatic draw-from-draw-pile and discard for each of that player's turns. Skipped players play normally when they return. When bot handover is built it will reuse the test bot, and the player can reclaim the seat by returning (open question 7).
 5. Reconnect always sends a fresh `welcome` with the full redacted view, so clients never rely on missed events.
 
-Identity at the socket level is the rejoin token, a random secret stored on the device and bound to a seat when joining. It is not an account.
+Identity at the socket level is the rejoin token, a random secret stored on the device and bound to a seat when joining. The server returns it only on the first join and stores only its SHA-256 hash; a rejoin with a valid token gets the same seat and no new token. It is not an account.
 
 ### 9.5 Optional turn timer
 
-When the host enables it, the DO sets an alarm per turn. On expiry, the server plays the default action for that player. The timer is paused during a disconnect pause.
+**Not built yet.** When the host enables it, the DO will set an alarm per turn. On expiry, the server will play the default action for that player. The timer is paused during a disconnect pause.
 
 ## 10. Data and state
 
@@ -317,6 +321,8 @@ No hard date. Stretch goal: a rough playable web version by winter break.
 | 3 | UNO-style UI polish | Animations, sound effects, emotes, scoreboard, final standings, Rematch, optional turn timer, Five Kingdoms card art. |
 | 4 | Desktop apps | Electron builds for macOS and Windows distributed privately. |
 
+Status: milestones 1 and 2 have a working proof of concept in PRs #1, #4, #5 and #6, which target `dev`.
+
 After the milestones: native iOS (TestFlight), Android, then the "later" list: text chat, voice, profile customization, stats, accounts, async play, house rules, bots.
 
 ## 15. Risks
@@ -336,9 +342,11 @@ After the milestones: native iOS (TestFlight), Android, then the "later" list: t
 
 ## 16. Open questions for the owner
 
-### 16.1 Rules interpretations to confirm
+**All questions in this section were accepted by the owner on 2026-11-11, with the defaults shown.**
 
-These are our interpretations, marked in [rules.md](rules.md). Defaults are what the engine will implement unless you say otherwise.
+### 16.1 Rules interpretations
+
+These are our interpretations, marked in [rules.md](rules.md). The engine implements the defaults.
 
 | # | Question | Our default |
 | - | -------- | ----------- |
@@ -347,7 +355,7 @@ These are our interpretations, marked in [rules.md](rules.md). Defaults are what
 | 3 | May a natural card of the wild rank be used as itself (for example a 7 as a 7 in round 5)? | Yes (rule 6.3.5). |
 | 4 | Who arranges melds on final turns? | The player does, with an engine auto-arrange and hint (rule 8.4). |
 
-### 16.2 Further gaps we found
+### 16.2 Further gaps (accepted)
 
 | # | Question | Our default |
 | - | -------- | ----------- |
@@ -363,10 +371,10 @@ These are our interpretations, marked in [rules.md](rules.md). Defaults are what
 
 Reported rather than silently resolved:
 
-- **A. Landscape-only vs iPhone PWA.** iOS Safari and home-screen PWAs do not honour manifest orientation locks, so landscape-only cannot be enforced there. Proposed: a rotate-device overlay plus a layout that is landscape-only by design. Android, Electron and native iOS can lock orientation. Please confirm this is acceptable.
+- **A. Landscape-only vs iPhone PWA.** iOS Safari and home-screen PWAs do not honour manifest orientation locks, so landscape-only cannot be enforced there. Proposed: a rotate-device overlay plus a layout that is landscape-only by design. Android, Electron and native iOS can lock orientation. Accepted.
 - **B. "Max seats 8 as a house rule" vs a 116-card deck.** 8 players at round 11 need 8 × 13 = 104 cards, leaving 12 for the piles. This works but leaves a thin draw pile, so reshuffles will be frequent. Not a v1 issue, noted for later.
 - **C. "Free or near-free hosting" vs reliability expectations.** Free-tier Durable Objects may have limits that matter for 7-player rooms. This is pending the research task. If limits bite, the budget needs revisiting.
-- **D. "Optional turn timer" vs "pause on disconnect".** We resolved this by pausing the timer during disconnect pauses. Please confirm.
+- **D. "Optional turn timer" vs "pause on disconnect".** We resolved this by pausing the timer during disconnect pauses. Accepted.
 
 ### 16.4 Product items still to supply
 
