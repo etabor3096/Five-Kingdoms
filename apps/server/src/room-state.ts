@@ -1,11 +1,6 @@
 /** The room's persisted shape and the pure helpers that read it. */
 
-import type {
-  PauseInfo,
-  PlayerInfo,
-  RoomInfo,
-  RoundScoredEvent,
-} from '@five-kingdoms/protocol';
+import type { PauseInfo, PlayerInfo, RoomInfo, RoundScoredEvent } from '@five-kingdoms/protocol';
 
 export interface StoredPlayer {
   seat: number;

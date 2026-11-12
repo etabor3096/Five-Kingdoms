@@ -43,6 +43,8 @@ export function ScoreboardScreen() {
   if (!view || !room || !view.wildRank) return null;
   const isLast = view.phase === 'gameOver';
   const wild = view.wildRank;
+  const doneCount = room.continuedIds.length;
+  const waiting = !isLast && room.continuedIds.includes(room.selfId);
   const outName = view.players.find((p) => p.id === view.outPlayerId)?.name;
 
   return (
@@ -58,7 +60,14 @@ export function ScoreboardScreen() {
           </Txt>
         </View>
         <Btn
-          label={isLast ? 'Final standings' : 'Continue'}
+          label={
+            isLast
+              ? 'Final standings'
+              : waiting
+                ? `Waiting… ${doneCount}/${room.players.length}`
+                : 'Continue'
+          }
+          disabled={waiting}
           onPress={() => (isLast ? store.openStandings() : void client.continueRound())}
         />
       </View>

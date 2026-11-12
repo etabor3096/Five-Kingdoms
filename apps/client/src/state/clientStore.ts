@@ -4,7 +4,13 @@
  */
 
 import type { CardId, GameEvent, GameView } from '@five-kingdoms/engine';
-import type { ClientError, EmoteId, GameClient, RoomState } from '../net/GameClient';
+import type {
+  ClientError,
+  ConnectionState,
+  EmoteId,
+  GameClient,
+  RoomState,
+} from '../net/GameClient';
 
 export type RoundScoredEvent = Extract<GameEvent, { type: 'roundScored' }>;
 
@@ -25,6 +31,13 @@ export interface ClientSnapshot {
   emotes: Record<string, { emote: EmoteId; key: number }>;
   /** True once the player has dismissed the last round's scoreboard on the way to standings. */
   standingsOpen: boolean;
+  /** `reconnecting` while the socket to the server is down. */
+  connection: ConnectionState;
+  /**
+   * A problem the player must read and dismiss (a toast would vanish too soon), such as a
+   * client/server protocol mismatch. Null when there is nothing to show.
+   */
+  blocking: { title: string; text: string } | null;
 }
 
 const TOAST_MS = 3200;
@@ -38,6 +51,8 @@ const INITIAL: ClientSnapshot = {
   toast: null,
   emotes: {},
   standingsOpen: false,
+  connection: 'online',
+  blocking: null,
 };
 
 /** Maps a client error to short toast copy. */
@@ -55,8 +70,13 @@ export class ClientStore {
   constructor(readonly client: GameClient) {
     this.unsubs.push(
       client.onRoom((room) => {
-        if (room === null) this.set({ ...INITIAL, toast: this.snapshot.toast });
-        else this.set({ room });
+        if (room === null) {
+          this.set({
+            ...INITIAL,
+            toast: this.snapshot.toast,
+            blocking: this.snapshot.blocking,
+          });
+        } else this.set({ room });
       }),
       client.onView((view) => {
         const standingsOpen = view?.phase === 'gameOver' ? this.snapshot.standingsOpen : false;
@@ -64,7 +84,8 @@ export class ClientStore {
       }),
       client.onEvents((events) => this.handleEvents(events)),
       client.onEmote(({ playerId, emote }) => this.showEmote(playerId, emote)),
-      client.onError((error) => this.showToast(errorText(error))),
+      client.onError((error) => this.handleError(error)),
+      client.onConnection((connection) => this.set({ connection })),
     );
   }
 
@@ -90,12 +111,26 @@ export class ClientStore {
     }, TOAST_MS);
   }
 
+  /** Closes the blocking message, if any. */
+  dismissBlocking(): void {
+    this.set({ blocking: null });
+  }
+
   /** Stops listening to the client and cancels timers. */
   dispose(): void {
     this.unsubs.forEach((u) => u());
     this.timers.forEach(clearTimeout);
     this.timers.clear();
     this.listeners.clear();
+  }
+
+  /** Version mismatches get a message that stays; everything else is a short toast. */
+  private handleError(error: ClientError): void {
+    if (error.code === 'PROTOCOL_VERSION') {
+      this.set({ blocking: { title: 'Update needed', text: error.message } });
+    } else {
+      this.showToast(errorText(error));
+    }
   }
 
   private handleEvents(events: GameEvent[]): void {
