@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+coverage
+.wrangler
+.expo
+.turbo
+.DS_Store
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example

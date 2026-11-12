@@ -1,0 +1,18 @@
+{
+  "name": "@five-kingdoms/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Wire protocol shared by the Five Kingdoms server and client (types plus a runtime validator).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@five-kingdoms/engine": "workspace:*"
+  }
+}
