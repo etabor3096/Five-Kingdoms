@@ -10,8 +10,9 @@ const room = (phase: RoomState['phase']): RoomState => ({
   selfId: 'you',
   hostId: 'you',
   phase,
-  settings: { maxSeats: 4 },
+  settings: { maxSeats: 4, turnTimer: false },
   players: [],
+  turnDeadline: null,
   pause: null,
   continuedIds: [],
 });

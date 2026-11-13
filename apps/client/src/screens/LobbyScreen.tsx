@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Avatar } from '../components/Avatar';
+import { TURN_TIMER_SECONDS } from '@five-kingdoms/protocol';
+import { TurnTimerToggle } from '../components/TurnTimerToggle';
 import { Btn, DevBadge, Panel, Stepper, Txt } from '../components/ui';
 import { COLORS } from '../design/tokens';
 import { isDevHarness } from '../net/LocalGameClient';
@@ -117,6 +119,16 @@ export function LobbyScreen() {
           />
         ) : (
           <Txt size={20}>Max seats: {room.settings.maxSeats} (host sets this)</Txt>
+        )}
+        {isHost ? (
+          <TurnTimerToggle
+            value={room.settings.turnTimer}
+            onChange={(turnTimer) => void client.updateSettings({ turnTimer })}
+          />
+        ) : (
+          <Txt size={20}>
+            Turn timer: {room.settings.turnTimer ? `${TURN_TIMER_SECONDS}s per turn` : 'off'}
+          </Txt>
         )}
         {isDevHarness(client) && isHost && (
           <View style={{ gap: 6 }}>

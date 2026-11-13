@@ -9,6 +9,7 @@ import { ArrangeSheet } from '../components/table/ArrangeSheet';
 import { EmotePicker } from '../components/table/EmotePicker';
 import { FanHand } from '../components/table/FanHand';
 import { Piles } from '../components/table/Piles';
+import { TurnClock } from '../components/table/TurnClock';
 import { SeatBadge } from '../components/table/SeatBadge';
 import { CANVAS, COLORS } from '../design/tokens';
 import type { ArrangeMode } from '../arrange/model';
@@ -152,6 +153,8 @@ export function TableScreen() {
           {promptFor(view, isMyTurn, goOutPlan !== null)}
         </Txt>
       </View>
+
+      {room.turnDeadline !== null && <TurnClock deadline={room.turnDeadline} mine={isMyTurn} />}
 
       <FanHand
         cards={ordered}

@@ -10,6 +10,9 @@ export const PROTOCOL_VERSION = 1;
 export const MIN_MAX_SEATS = 2;
 export const MAX_MAX_SEATS = 7;
 
+/** How long a turn may take when the host has switched the turn timer on. */
+export const TURN_TIMER_SECONDS = 60;
+
 /** Heartbeat strings. The server answers `ping` with `pong` without waking the room. */
 export const PING = 'ping';
 export const PONG = 'pong';
@@ -33,7 +36,8 @@ export type ClientMessage =
     }
   | { type: 'ready' }
   | { type: 'unready' }
-  | { type: 'settings'; maxSeats: number }
+  /** Host only, lobby only. Carries at least one setting; omitted ones keep their value. */
+  | { type: 'settings'; maxSeats?: number; turnTimer?: boolean }
   | { type: 'start' }
   /** `lastVersion` is the newest view version the client has seen. */
   | { type: 'intent'; action: IntentAction; lastVersion: number }
@@ -73,6 +77,13 @@ export interface RoomInfo {
   status: 'lobby' | 'game';
   hostSeat: number;
   maxSeats: number;
+  /** True when the host has switched the optional turn timer on. */
+  turnTimer: boolean;
+  /**
+   * Epoch ms when the current turn is played automatically (draw from the draw pile, discard
+   * the drawn card). `null` when the timer is off, the game is paused, or nobody is on the clock.
+   */
+  turnDeadline: number | null;
   players: PlayerInfo[];
   /** Seats that have acknowledged the current round-end scoreboard. */
   continued: number[];

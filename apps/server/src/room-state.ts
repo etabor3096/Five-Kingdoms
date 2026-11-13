@@ -13,6 +13,19 @@ export interface StoredPlayer {
   tokenHash: string;
 }
 
+/**
+ * The optional turn timer's clock for one turn. While the game is paused `deadline` is `null`
+ * and `remainingMs` holds what was left, so the turn resumes with the same time.
+ */
+export interface TurnClock {
+  /** Identifies the turn (`turnKey`), so a new turn gets a fresh clock. */
+  key: string;
+  /** Epoch ms when the turn is auto-played, or `null` while paused. */
+  deadline: number | null;
+  /** Time left when the clock last stopped (the full turn length for a new turn). */
+  remainingMs: number;
+}
+
 export interface StoredPause {
   deadline: number;
   expired: boolean;
@@ -24,6 +37,10 @@ export interface RoomState {
   status: 'lobby' | 'game';
   hostSeat: number;
   maxSeats: number;
+  /** Host setting: auto-play turns that take too long. Optional: older stored rooms lack it. */
+  turnTimer?: boolean;
+  /** The running turn's clock, when the turn timer is on and someone is on the clock. */
+  turnClock?: TurnClock | null;
   players: StoredPlayer[];
   /** Seats that acknowledged the current round-end scoreboard. */
   continued: number[];
@@ -48,12 +65,40 @@ export function newRoomState(code: string, maxSeats = 7): RoomState {
     status: 'lobby',
     hostSeat: 0,
     maxSeats,
+    turnTimer: false,
+    turnClock: null,
     players: [],
     continued: [],
     pause: null,
     version: 0,
     lastRoundScored: null,
   };
+}
+
+/** Names one turn. No player has two turns in a row within a round, so round + seat is enough. */
+export const turnKey = (round: number, currentIndex: number): string => `${round}:${currentIndex}`;
+
+/**
+ * The turn clock after a change, given whether the game is paused. Pure.
+ *
+ * - A new turn (`key` differs) starts with the full `turnMs`.
+ * - Pausing stops the clock and remembers what was left; resuming restarts it from there.
+ */
+export function advanceTurnClock(
+  clock: TurnClock | null,
+  key: string,
+  paused: boolean,
+  now: number,
+  turnMs: number,
+): TurnClock {
+  const current: TurnClock =
+    clock && clock.key === key ? clock : { key, deadline: null, remainingMs: turnMs };
+  if (paused) {
+    if (current.deadline === null) return current;
+    return { key, deadline: null, remainingMs: Math.max(0, current.deadline - now) };
+  }
+  if (current.deadline !== null) return current;
+  return { key, deadline: now + current.remainingMs, remainingMs: current.remainingMs };
 }
 
 /** Next host: the nearest connected seat after the old host, wrapping. `null` if none. */
@@ -89,6 +134,8 @@ export function toRoomInfo(
     status: room.status,
     hostSeat: room.hostSeat,
     maxSeats: room.maxSeats,
+    turnTimer: room.turnTimer ?? false,
+    turnDeadline: room.turnClock?.deadline ?? null,
     players,
     continued: [...room.continued],
     pause,

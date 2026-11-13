@@ -133,8 +133,8 @@ interface Session {
   token: string | null;
   /** True after the first `welcome`; from then on a drop means "reconnect", not "failed". */
   joined: boolean;
-  /** Seat count to apply right after the first welcome (a freshly created room only). */
-  initialMaxSeats: number | null;
+  /** Settings to apply right after the first welcome (a freshly created room only). */
+  initialSettings: Partial<RoomSettings> | null;
   /** Called when the join attempt succeeds or fails for good. */
   settle: (() => void) | null;
 }
@@ -203,7 +203,7 @@ export class RemoteGameClient implements GameClient {
       this.fail('NETWORK', "Couldn't reach the game server. Check your connection and try again.");
       return;
     }
-    await this.startSession(code, profile, null, settings.maxSeats ?? DEFAULT_MAX_SEATS);
+    await this.startSession(code, profile, null, { maxSeats: DEFAULT_MAX_SEATS, ...settings });
   }
 
   async joinRoom(code: string, profile: Profile): Promise<void> {
@@ -231,8 +231,13 @@ export class RemoteGameClient implements GameClient {
   }
 
   updateSettings(settings: Partial<RoomSettings>): Promise<void> {
-    if (settings.maxSeats !== undefined)
-      this.send({ type: 'settings', maxSeats: settings.maxSeats });
+    const { maxSeats, turnTimer } = settings;
+    if (maxSeats === undefined && turnTimer === undefined) return Promise.resolve();
+    this.send({
+      type: 'settings',
+      ...(maxSeats !== undefined ? { maxSeats } : {}),
+      ...(turnTimer !== undefined ? { turnTimer } : {}),
+    });
     return Promise.resolve();
   }
 
@@ -306,10 +311,10 @@ export class RemoteGameClient implements GameClient {
     code: string,
     profile: Profile,
     token: string | null,
-    initialMaxSeats: number | null,
+    initialSettings: Partial<RoomSettings> | null,
   ): Promise<void> {
     return new Promise<void>((resolve) => {
-      this.session = { code, profile, token, joined: false, initialMaxSeats, settle: resolve };
+      this.session = { code, profile, token, joined: false, initialSettings, settle: resolve };
       this.openSocket();
     });
   }
@@ -492,14 +497,13 @@ export class RemoteGameClient implements GameClient {
       this.listeners.events.forEach((l) => l([message.lastRoundScored!]));
     this.setView(message.view);
 
-    if (
-      firstWelcome &&
-      session.initialMaxSeats !== null &&
-      message.seat === message.room.hostSeat
-    ) {
-      if (session.initialMaxSeats !== message.room.maxSeats) {
-        this.send({ type: 'settings', maxSeats: session.initialMaxSeats });
-      }
+    if (firstWelcome && session.initialSettings && message.seat === message.room.hostSeat) {
+      // Only what differs from the new room's defaults needs sending.
+      const { maxSeats, turnTimer } = session.initialSettings;
+      void this.updateSettings({
+        ...(maxSeats !== undefined && maxSeats !== message.room.maxSeats ? { maxSeats } : {}),
+        ...(turnTimer !== undefined && turnTimer !== message.room.turnTimer ? { turnTimer } : {}),
+      });
     }
     session.settle?.();
     session.settle = null;
@@ -542,7 +546,8 @@ export class RemoteGameClient implements GameClient {
       selfId: this.selfId,
       hostId: playerIdForSeat(info.hostSeat),
       phase: info.status === 'game' ? 'inGame' : 'lobby',
-      settings: { maxSeats: info.maxSeats },
+      settings: { maxSeats: info.maxSeats, turnTimer: info.turnTimer },
+      turnDeadline: info.turnDeadline,
       players,
       continuedIds: info.continued.map(playerIdForSeat),
       pause: info.pause

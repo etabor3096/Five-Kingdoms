@@ -196,7 +196,7 @@ Transport: WebSocket per player to the room's Durable Object, JSON messages. The
 | --------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Client → server | `join`             | Join a room with code, display name, avatar, protocol version, and optionally a device-held rejoin token.                                                                                                                                                 |
 | Client → server | `ready`, `unready` | Lobby ready state.                                                                                                                                                                                                                                        |
-| Client → server | `settings`         | Host changes room settings. Only max seats (2 to 7) exists so far; the turn timer is not built yet.                                                                                                                                                       |
+| Client → server | `settings`         | Host changes room settings in the lobby: max seats (2 to 7) and the turn timer (on/off). Either may be omitted.                                                                                                                                           |
 | Client → server | `start`, `rematch` | Host starts a game or a rematch.                                                                                                                                                                                                                          |
 | Client → server | `intent`           | A game action (draw, discard, go out, final-turn melds) plus the last view version the client has seen. The server-driven `startNextRound` is not a valid intent.                                                                                         |
 | Client → server | `continue`         | Acknowledges the round-end scoreboard. Once every connected player has sent it, the server starts the next round.                                                                                                                                         |
@@ -254,7 +254,7 @@ Identity at the socket level is the rejoin token, a random secret stored on the 
 
 ### 9.5 Optional turn timer
 
-**Not built yet.** When the host enables it, the DO will set an alarm per turn. On expiry, the server will play the default action for that player. The timer is paused during a disconnect pause.
+Off by default; the host switches it on in the lobby (`settings`). A turn then lasts 60 s (`TURN_TIMER_SECONDS`), draw and discard together. The DO keeps one named `turn` deadline per turn and `roomUpdate` carries it as `turnDeadline`, so clients show a countdown. On expiry the server finishes the turn with the default action (draw from the draw pile, discard the drawn card; just the discard if the player had already drawn). The player is not marked skipped. The clock stops during a disconnect pause and resumes with the time that was left. Skipped seats have no clock: they are auto-played at once.
 
 ## 10. Data and state
 
@@ -315,12 +315,12 @@ Reasoning is in [ADR 0003](adr/0003-web-pwa-and-electron-mvp.md).
 
 No hard date. Stretch goal: a rough playable web version by winter break.
 
-| #   | Milestone                                | Done when                                                                                                             |
-| --- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| 1   | Rules engine, fully tested               | All rules in rules.md covered by tests, solver, redaction and simulated games passing in CI.                          |
-| 2   | Server rooms + bare-bones playable table | Create/join by code, lobby, play a full 11-round game with friends on web, with reconnect handling.                   |
-| 3   | UNO-style UI polish                      | Animations, sound effects, emotes, scoreboard, final standings, Rematch, optional turn timer, Five Kingdoms card art. |
-| 4   | Desktop apps                             | Electron builds for macOS and Windows distributed privately.                                                          |
+| #   | Milestone                                | Done when                                                                                                                     |
+| --- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Rules engine, fully tested               | All rules in rules.md covered by tests, solver, redaction and simulated games passing in CI.                                  |
+| 2   | Server rooms + bare-bones playable table | Create/join by code, lobby, play a full 11-round game with friends on web, with reconnect handling.                           |
+| 3   | UNO-style UI polish                      | Animations, sound effects, emotes, scoreboard, final standings, Rematch, optional turn timer (built), Five Kingdoms card art. |
+| 4   | Desktop apps                             | Electron builds for macOS and Windows distributed privately.                                                                  |
 
 Status: milestones 1 and 2 have a working proof of concept (PRs #1, #4, #5, and #6 re-landed as #9), deployable with `scripts/deploy.sh`. Milestone 2 is done once a full game has been played with friends on a deployed environment.
 

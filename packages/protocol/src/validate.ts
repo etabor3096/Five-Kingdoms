@@ -100,9 +100,19 @@ export function parseClientMessage(json: unknown): ParseResult {
     case 'continue':
     case 'rematch':
       return good({ type: value.type });
-    case 'settings':
-      if (!isInt(value.maxSeats, MIN_MAX_SEATS, MAX_MAX_SEATS)) return fail('bad maxSeats');
-      return good({ type: 'settings', maxSeats: value.maxSeats });
+    case 'settings': {
+      const { maxSeats, turnTimer } = value;
+      if (maxSeats === undefined && turnTimer === undefined) return fail('no settings given');
+      if (maxSeats !== undefined && !isInt(maxSeats, MIN_MAX_SEATS, MAX_MAX_SEATS)) {
+        return fail('bad maxSeats');
+      }
+      if (turnTimer !== undefined && typeof turnTimer !== 'boolean') return fail('bad turnTimer');
+      return good({
+        type: 'settings',
+        ...(maxSeats !== undefined ? { maxSeats } : {}),
+        ...(turnTimer !== undefined ? { turnTimer } : {}),
+      });
+    }
     case 'intent': {
       const action = parseAction(value.action);
       if (!action) return fail('bad action');

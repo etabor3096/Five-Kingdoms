@@ -43,6 +43,8 @@ export interface PauseState {
 export interface RoomSettings {
   /** Seats at the table, 2 to 7. */
   maxSeats: number;
+  /** When on, a turn that takes too long is played automatically (draw, discard the drawn card). */
+  turnTimer: boolean;
 }
 
 export type RoomPhase = 'lobby' | 'inGame';
@@ -56,6 +58,11 @@ export interface RoomState {
   phase: RoomPhase;
   settings: RoomSettings;
   players: RoomPlayer[];
+  /**
+   * Epoch ms (server clock) when the current turn is played automatically. Null when the turn
+   * timer is off, the game is paused, or nobody is on the clock.
+   */
+  turnDeadline: number | null;
   /** Non-null while play is paused for an away player. */
   pause: PauseState | null;
   /** Ids of players who already pressed Continue on the round-end scoreboard. */

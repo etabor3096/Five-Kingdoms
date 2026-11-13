@@ -52,6 +52,21 @@ describe('parseClientMessage', () => {
     }
   });
 
+  it('validates the turn timer setting, alone or with max seats', () => {
+    expect(parseClientMessage({ type: 'settings', turnTimer: true })).toEqual({
+      ok: true,
+      message: { type: 'settings', turnTimer: true },
+    });
+    expect(parseClientMessage({ type: 'settings', maxSeats: 4, turnTimer: false })).toEqual({
+      ok: true,
+      message: { type: 'settings', maxSeats: 4, turnTimer: false },
+    });
+    expect(parseClientMessage({ type: 'settings' }).ok).toBe(false);
+    for (const turnTimer of [1, 'yes', null]) {
+      expect(parseClientMessage({ type: 'settings', turnTimer }).ok).toBe(false);
+    }
+  });
+
   it('validates intents', () => {
     const ok = (action: unknown) =>
       parseClientMessage({ type: 'intent', action, lastVersion: 3 }).ok;

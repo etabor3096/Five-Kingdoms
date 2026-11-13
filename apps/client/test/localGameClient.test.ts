@@ -135,6 +135,11 @@ describe('LocalGameClient lobby', () => {
     expect(state.errors.at(-1)?.code).toBe('BAD_SETTINGS');
     await client.updateSettings({ maxSeats: 3 });
     expect(state.room?.settings.maxSeats).toBe(3);
+    // The harness remembers the turn timer choice (it has no server to run the clock).
+    expect(state.room?.settings.turnTimer).toBe(false);
+    await client.updateSettings({ turnTimer: true });
+    expect(state.room?.settings).toEqual({ maxSeats: 3, turnTimer: true });
+    expect(state.room?.turnDeadline).toBeNull();
     expect(state.room?.players).toHaveLength(3);
   });
 

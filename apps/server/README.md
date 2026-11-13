@@ -34,7 +34,7 @@ which uses the `env` blocks in `wrangler.jsonc` (`demo`, `dev`, `staging`, `prod
 2. Server answers `welcome {seat, rejoinToken, room, view, version}`. A new player gets a
    `rejoinToken` once (the server keeps only its SHA-256). A rejoin with a valid token gets the
    same seat and `rejoinToken: null`. `view` is `null` in the lobby.
-3. Lobby: `ready` / `unready`, host-only `settings {maxSeats}` (2-7) and `start`. Every change is
+3. Lobby: `ready` / `unready`, host-only `settings {maxSeats?, turnTimer?}` (seats 2-7, timer on/off) and `start`. Every change is
    announced with `roomUpdate`. `start` needs at least 2 players, all ready and connected.
 4. Game: the client sends `intent {action, lastVersion}`. On success every seat receives
    `events {events, view, version}`, with events redacted for that seat and that seat's own view.
@@ -58,6 +58,18 @@ host may send `hostDecision {seat, decision}`:
   (during final turns, `finalTurnLayDown` with no melds). If the stock cannot be drawn from, it
   draws the discard and throws a different card. The skipped player plays normally on returning.
 
+### Turn timer
+
+Off unless the host sends `settings {turnTimer: true}` in the lobby. While it is on, each turn
+(draw and discard together) has 60 s. `roomUpdate.room.turnDeadline` is the epoch ms at which
+the turn is played automatically, or `null` when no clock is running.
+
+- On expiry the server plays the same default moves as a skipped seat: draw from the stock and
+  discard the drawn card, or only the discard if the player had already drawn. The player is
+  not marked skipped; their next turn is theirs.
+- The clock stops while the game is paused for an away player and resumes with the time left.
+- Skipped seats have no clock, because their turns are auto-played immediately.
+
 ### Storage and timers
 
 - `room` (seats, hashed tokens, settings, pause), `game` (the full `GameState`) and `schedule`
@@ -65,14 +77,14 @@ host may send `hostDecision {seat, decision}`:
   constructor under `blockConcurrencyWhile`.
 - Sockets use the Hibernation API; each carries its seat in `serializeAttachment`. In-memory
   state is only a cache (the emote rate limiter resets on hibernation).
-- A Durable Object has one alarm. `schedule` holds named deadlines (`pause`, `expiry`) and the
+- A Durable Object has one alarm. `schedule` holds named deadlines (`pause`, `turn`, `expiry`) and the
   alarm is always set to the earliest. Thirty minutes after the last socket closes (also for a
   room nobody ever joined) the room deletes all of its storage.
 
 ### Test-only knobs
 
-`GRACE_MS` and `EXPIRY_MS` override the 60 s grace period and 30 minute expiry. They are unset
-in `wrangler.jsonc`; `vitest.config.ts` sets them to 400 ms and 1.5 s.
+`GRACE_MS`, `EXPIRY_MS` and `TURN_MS` override the 60 s grace period, 30 minute expiry and 60 s
+turn. They are unset in `wrangler.jsonc`; `vitest.config.ts` sets them to 400 ms, 1.5 s and 500 ms.
 
 ## Tests
 
@@ -80,7 +92,7 @@ in `wrangler.jsonc`; `vitest.config.ts` sets them to 400 ms and 1.5 s.
   limiting, host succession, and a CPU measurement. Plain Node Vitest.
 - `test/integration`: real WebSockets against the Worker and Room through
   `@cloudflare/vitest-plugin` (room creation and 404, lobby, illegal intents, redaction, rejoin,
-  host migration, pause then skip then auto-play, round continue, eviction mid-game, a full
+  host migration, pause then skip then auto-play, the turn timer, round continue, eviction mid-game, a full
   11-round game between three scripted clients, rematch, and idle expiry on a real alarm).
 
 ## Research results
