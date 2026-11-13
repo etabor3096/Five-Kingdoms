@@ -2,7 +2,7 @@
 
 This is the source of truth for game rules. The rules engine (`packages/engine`) implements exactly these statements, and each numbered rule should map to at least one test. Terms are defined in the [glossary](GLOSSARY.md). Product context is in the [SDD](SDD.md).
 
-Rules marked **[Interpretation]** are choices we made where the official rules are silent or ambiguous. They are listed again in the SDD's [Open questions](SDD.md#16-open-questions-for-the-owner) for the owner to confirm. All rule parameters are meant to be config-driven so house rules can be added later (see [ADR 0005](adr/0005-server-authoritative-shared-engine.md)).
+Rules marked **[Interpretation]** are choices we made where the official rules are silent or ambiguous. They are listed again in the SDD's [Open questions](SDD.md#16-open-questions-for-the-owner); the owner accepted all of them on 2026-11-11. All rule parameters are meant to be config-driven so house rules can be added later (see [ADR 0005](adr/0005-server-authoritative-shared-engine.md)).
 
 ## 1. Players
 
@@ -56,7 +56,7 @@ Rules marked **[Interpretation]** are choices we made where the official rules a
 - **5.4** The player's hand size is _n_ + 2 before drawing, _n_ + 3 after drawing, and _n_ + 2 after discarding.
 - **5.5** A player may not take any other action during a normal turn. Melds are not laid down on the table during normal turns.
 - **5.6** Only the top card of the discard pile is visible to players. Cards beneath it are not browsable. (The server still keeps the full order for reshuffling.)
-- **5.7** **[Interpretation, open]** A player who draws the top discard may not discard that same card in the same turn (it would be a no-op). The draw pile card may be discarded immediately.
+- **5.7** **[Interpretation]** A player who draws the top discard may not discard that same card in the same turn (it would be a no-op). The draw pile card may be discarded immediately.
 
 ## 6. Melds
 
@@ -134,7 +134,7 @@ A **meld** is a valid group of cards. A hand is only melded at the moment of goi
 - **11.4** The out-player's melds plus their discard account for all _n_ + 3 cards of their post-draw hand.
 - **11.5** A round always ends: once someone goes out, at most _p_ − 1 final turns follow, where _p_ is the number of players.
 - **11.6** If nobody can or wants to go out, play continues indefinitely, with draw pile reshuffles (10.1). The optional turn timer (SDD section 5) is the practical protection against stalling. There is no automatic round limit in v1.
-- **11.7** Disconnects, skipped turns and bot substitution are room-level behaviours, not rules. They are specified in the [SDD](SDD.md#9-networking-protocol), not here. A skipped turn is treated as an automatic draw-from-draw-pile and discard of the drawn card (open question).
+- **11.7** Disconnects, skipped turns and bot substitution are room-level behaviours, not rules. They are specified in the [SDD](SDD.md#9-networking-protocol), not here. A skipped turn is treated as an automatic draw-from-draw-pile and discard of the drawn card (SDD open question 8, accepted).
 
 ## 12. Summary of interpretations
 
@@ -145,4 +145,4 @@ A **meld** is a valid group of cards. A hand is only melded at the moment of goi
 | 3   | A natural card of the wild rank may be used as itself                                               | 6.3.5 |
 | 4   | Final-turn players arrange their own melds; the solver only offers auto-arrange and hints           | 8.4   |
 
-Two further gaps we found while writing this are marked "open" above (5.7 and 11.7). The owner should confirm these too.
+Two further gaps we found while writing this (5.7 and 11.7) are SDD open questions 5 and 8. The owner accepted all of these on 2026-11-11.

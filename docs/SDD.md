@@ -97,7 +97,7 @@ flowchart LR
 - Large rank numerals for readability on phones held in landscape.
 - The current round's wild rank is visually highlighted on every card of that rank and in the round header. Jokers have a distinct, original design.
 - Cards, table, and UI are drawn in code as SVG for the MVP ([ADR 0008](adr/0008-svg-in-code-art.md)). Sound effects are free CC0 packs.
-- Palette: to be defined in a design-tokens module with a colorblind check for the five kingdom colors (research task, see risks).
+- Palette: defined in the client's design-tokens module (`apps/client/src/design/tokens.ts`), with contrast and colorblind-simulation tests for the five kingdom colors (`apps/client/test/palette.test.ts`).
 - All art and assets are original. No UNO or Ubisoft assets.
 
 ## 7. Architecture
@@ -270,7 +270,7 @@ Identity at the socket level is the rejoin token, a random secret stored on the 
 Notes:
 
 - The server is the single source of truth. Clients hold no authoritative game state.
-- Persisting to DO storage after every action makes rooms survive Durable Object eviction and restarts. Hibernation-friendly WebSockets are preferred so idle rooms cost nothing (to be confirmed by the free-tier research task).
+- Persisting to DO storage after every action makes rooms survive Durable Object eviction and restarts. Sockets use the WebSocket Hibernation API, so idle rooms cost nothing.
 - No personal data beyond a chosen display name and avatar is stored, and nothing is stored after the room expires.
 
 ## 11. Platforms & distribution
@@ -328,18 +328,18 @@ After the milestones: native iOS (TestFlight), Android, then the "later" list: t
 
 ## 15. Risks
 
-| Risk                                                                                               | Impact                                                  | Mitigation                                                                                                                                   |
-| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cloudflare free-tier limits (requests, duration, storage, WebSocket messages) are not yet verified | Hosting could cost money or throttle                    | A research task verifies current limits. Design for few, small messages and hibernation. Keep the server thin so it can move hosts.          |
-| Landscape-only cannot be enforced on iPhone PWAs                                                   | Portrait users see a broken layout                      | Show a "rotate your device" overlay. Orientation lock works in Electron and native, not reliably in iOS Safari/PWA (see section 16, note A). |
-| iOS PWA quirks (audio unlock, WebSocket suspension in the background, no push)                     | Missed turns, silent sound                              | Require a tap before audio. Treat backgrounding as a disconnect with fast rejoin.                                                            |
-| One RN codebase across web, desktop and iOS                                                        | Web layout and animation performance differ from native | Keep animations simple, test on all targets early (milestone 2), and use Reanimated only where proven on web.                                |
-| Rules ambiguity                                                                                    | Players dispute outcomes                                | Four interpretations are written down and approved by the owner before engine finalization.                                                  |
-| Unsigned desktop apps                                                                              | Install friction                                        | Document the steps for friends. Revisit signing if it becomes a real issue.                                                                  |
-| Name and trademark ("Five Crowns")                                                                 | Blocks a public release                                 | Trademark check before any public release. Private use is unaffected.                                                                        |
-| Solver complexity with many wilds in large hands                                                   | Slow auto-arrange                                       | Exact search with pruning and a time budget, backed by property tests.                                                                       |
-| Cheating by modified clients                                                                       | Unfair private games                                    | Server authority and redaction make it very hard. Fully fair play among friends is the stated scope.                                         |
-| Colorblind-safe palette for five suits plus the Joker                                              | Hard to tell kingdoms apart                             | Crest shape plus classic symbol plus color. Test with simulation tools.                                                                      |
+| Risk                                                                           | Impact                                                  | Mitigation                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cloudflare free-tier limits (requests, duration, storage, WebSocket messages)  | Hosting could cost money or throttle                    | Verified on 2026-11-11 ([research](research/platform-stack.md)): estimated load is 2 to 20% of the free daily limits. Few, small messages and hibernation keep it there. The server stays thin so it can move hosts. |
+| Landscape-only cannot be enforced on iPhone PWAs                               | Portrait users see a broken layout                      | Show a "rotate your device" overlay. Orientation lock works in Electron and native, not reliably in iOS Safari/PWA (see section 16, note A).                                                                         |
+| iOS PWA quirks (audio unlock, WebSocket suspension in the background, no push) | Missed turns, silent sound                              | Require a tap before audio. Treat backgrounding as a disconnect with fast rejoin.                                                                                                                                    |
+| One RN codebase across web, desktop and iOS                                    | Web layout and animation performance differ from native | Keep animations simple, test on all targets early (milestone 2), and use Reanimated only where proven on web.                                                                                                        |
+| Rules ambiguity                                                                | Players dispute outcomes                                | Four interpretations are written down and approved by the owner before engine finalization.                                                                                                                          |
+| Unsigned desktop apps                                                          | Install friction                                        | Document the steps for friends. Revisit signing if it becomes a real issue.                                                                                                                                          |
+| Name and trademark ("Five Crowns")                                             | Blocks a public release                                 | Trademark check before any public release. Private use is unaffected.                                                                                                                                                |
+| Solver complexity with many wilds in large hands                               | Slow auto-arrange                                       | Exact search with pruning and a time budget, backed by property tests.                                                                                                                                               |
+| Cheating by modified clients                                                   | Unfair private games                                    | Server authority and redaction make it very hard. Fully fair play among friends is the stated scope.                                                                                                                 |
+| Colorblind-safe palette for five suits plus the Joker                          | Hard to tell kingdoms apart                             | Crest shape plus classic symbol plus color. Test with simulation tools.                                                                                                                                              |
 
 ## 16. Open questions for the owner
 
@@ -374,7 +374,7 @@ Reported rather than silently resolved:
 
 - **A. Landscape-only vs iPhone PWA.** iOS Safari and home-screen PWAs do not honour manifest orientation locks, so landscape-only cannot be enforced there. Proposed: a rotate-device overlay plus a layout that is landscape-only by design. Android, Electron and native iOS can lock orientation. Accepted.
 - **B. "Max seats 8 as a house rule" vs a 116-card deck.** 8 players at round 11 need 8 × 13 = 104 cards, leaving 12 for the piles. This works but leaves a thin draw pile, so reshuffles will be frequent. Not a v1 issue, noted for later.
-- **C. "Free or near-free hosting" vs reliability expectations.** Free-tier Durable Objects may have limits that matter for 7-player rooms. This is pending the research task. If limits bite, the budget needs revisiting.
+- **C. "Free or near-free hosting" vs reliability expectations.** Free-tier Durable Objects may have limits that matter for 7-player rooms. The [platform research](research/platform-stack.md) estimates our load at 2 to 20% of the free daily limits, so this is not a concern at family scale. If real usage outgrows them, the budget needs revisiting.
 - **D. "Optional turn timer" vs "pause on disconnect".** We resolved this by pausing the timer during disconnect pauses. Accepted.
 
 ### 16.4 Product items still to supply
