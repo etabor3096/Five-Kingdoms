@@ -95,4 +95,4 @@ Promotion chain: **`demo` → `dev` → `staging` → `main`**. Each branch has 
 - `apps/server/README.md`: the real wire protocol, routes, storage and timers
 - The client has no README; the root `README.md` covers local play.
 
-**Code and `apps/server/README.md` win over the SDD.** SDD §9 is stale: the protocol has a `continue` message (not an `intent` acknowledgement), is a separate `packages/protocol` package, `ping`/`pong` is a runtime string reply, and `skip` is the only implemented host decision besides `wait` (no bot handover yet). Flag further drift in your PR; the SDD needs a follow-up update.
+**Code and `apps/server/README.md` win over the SDD.** SDD §9 was synced with the built protocol on 2026-11-12. If you find drift, fix the SDD in your PR or flag it there.

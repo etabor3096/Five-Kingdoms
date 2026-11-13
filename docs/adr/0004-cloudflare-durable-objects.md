@@ -10,7 +10,7 @@ Rooms need real-time, ordered, stateful coordination over WebSockets for 2 to 7 
 
 Host the server on Cloudflare Workers, with one Durable Object per room. The Worker routes connections by room code. The DO holds authoritative game state, accepts WebSockets, persists state to DO storage, and uses alarms for the reconnect grace period, turn timer, and the 30-minute room expiry.
 
-Free-tier limits are not yet verified. A research task will confirm current limits before milestone 2.
+Free-tier limits were verified on 2026-11-11 ([platform stack research](../research/platform-stack.md)): SQLite-backed Durable Objects are available on the Workers Free plan, and the estimated load is 2 to 20% of the daily limits.
 
 ## Consequences
 
@@ -18,4 +18,4 @@ Free-tier limits are not yet verified. A research task will confirm current limi
 - Scales to many rooms at little or no cost, and rooms cost almost nothing when idle if WebSocket hibernation is used.
 - Ties the server to Cloudflare APIs. The engine stays portable, and the thin server layer could be moved if needed.
 - Local development and testing need Workers tooling (wrangler/Miniflare).
-- If the free tier proves too restrictive, the budget assumption needs revisiting.
+- If real usage outgrows the free tier, the budget assumption needs revisiting.
