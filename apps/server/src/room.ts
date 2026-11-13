@@ -19,6 +19,7 @@ import {
   PING,
   PONG,
   PROTOCOL_VERSION,
+  TURN_TIMER_SECONDS,
   parseClientMessage,
   MAX_MESSAGE_CHARS,
   type ClientMessage,
@@ -30,10 +31,12 @@ import { pickAutoMove } from './autoplay';
 import { DEFAULT_EXPIRY_MS, DEFAULT_GRACE_MS, msSetting, type Env } from './env';
 import { allowAction } from './rate-limit';
 import {
+  advanceTurnClock,
   newRoomState,
   nextHost,
   playerIdForSeat,
   toRoomInfo,
+  turnKey,
   type RoomState,
   type StoredPlayer,
 } from './room-state';
@@ -47,6 +50,7 @@ interface Attachment {
 
 const PAUSE = 'pause';
 const EXPIRY = 'expiry';
+const TURN = 'turn';
 /** Safety bound on automatic moves in one pass (a full 11-round game is far below this). */
 const MAX_AUTO_STEPS = 2000;
 const OPEN = 1;
@@ -120,7 +124,10 @@ export class Room extends DurableObject<Env> {
     await this.handleDisconnect(ws);
   }
 
-  /** Runs the earliest due deadline(s): end of a disconnect grace period, or room expiry. */
+  /**
+   * Runs the earliest due deadline(s): end of a disconnect grace period, a turn that ran out
+   * of time, or room expiry.
+   */
   override async alarm(): Promise<void> {
     if (!this.room) return;
     const { due, rest } = takeDue(this.schedule, Date.now());
@@ -128,9 +135,9 @@ export class Room extends DurableObject<Env> {
     for (const deadline of due) {
       if (deadline.id === EXPIRY && this.openSockets().length === 0) return this.expire();
       if (deadline.id === PAUSE && this.room.pause) this.room.pause.expired = true;
+      if (deadline.id === TURN) await this.playTimedOutTurn();
     }
-    await this.persist();
-    this.broadcastRoom();
+    await this.reconcile();
   }
 
   // ------------------------------------------------------------------ dispatch
@@ -145,7 +152,7 @@ export class Room extends DurableObject<Env> {
       case 'unready':
         return this.onReady(ws, seat, msg.type === 'ready');
       case 'settings':
-        return this.onSettings(ws, seat, msg.maxSeats);
+        return this.onSettings(ws, seat, msg);
       case 'start':
         return this.onStart(ws, seat);
       case 'intent':
@@ -224,13 +231,19 @@ export class Room extends DurableObject<Env> {
     this.broadcastRoom();
   }
 
-  private async onSettings(ws: WebSocket, seat: number, maxSeats: number) {
+  private async onSettings(
+    ws: WebSocket,
+    seat: number,
+    settings: Extract<ClientMessage, { type: 'settings' }>,
+  ) {
     const room = this.room as RoomState;
     if (!this.requireHost(ws, seat) || !this.requireStatus(ws, 'lobby')) return;
-    if (maxSeats < room.players.length) {
+    const { maxSeats, turnTimer } = settings;
+    if (maxSeats !== undefined && maxSeats < room.players.length) {
       return this.sendError(ws, 'INVALID_SETTINGS', 'Fewer seats than players already joined');
     }
-    room.maxSeats = maxSeats;
+    if (maxSeats !== undefined) room.maxSeats = maxSeats;
+    if (turnTimer !== undefined) room.turnTimer = turnTimer;
     await this.persist();
     this.broadcastRoom();
   }
@@ -271,7 +284,8 @@ export class Room extends DurableObject<Env> {
     room.continued = [];
     room.lastRoundScored = null;
     room.pause = null;
-    this.schedule = clearDeadline(this.schedule, PAUSE);
+    room.turnClock = null;
+    this.schedule = clearDeadline(clearDeadline(this.schedule, PAUSE), TURN);
     for (const p of room.players) {
       p.ready = false;
       p.skipped = false;
@@ -386,6 +400,60 @@ export class Room extends DurableObject<Env> {
     }
   }
 
+  /**
+   * Keeps the optional turn timer in step with the game: a fresh clock for each new turn,
+   * stopped while the game is paused, and none at all for skipped seats (they are auto-played
+   * at once) or outside a turn. Call after `syncPause`.
+   */
+  private syncTurnClock(): void {
+    const room = this.room as RoomState;
+    const game = this.game;
+    const inTurn = game?.phase === 'awaitingDraw' || game?.phase === 'awaitingDiscard';
+    const mover = game ? room.players[game.currentIndex] : undefined;
+    if (!room.turnTimer || !game || !inTurn || !mover || mover.skipped) {
+      room.turnClock = null;
+      this.schedule = clearDeadline(this.schedule, TURN);
+      return;
+    }
+    const clock = advanceTurnClock(
+      room.turnClock ?? null,
+      turnKey(game.round, game.currentIndex),
+      room.pause !== null,
+      Date.now(),
+      this.turnMs(),
+    );
+    room.turnClock = clock;
+    this.schedule =
+      clock.deadline === null
+        ? clearDeadline(this.schedule, TURN)
+        : setDeadline(this.schedule, TURN, clock.deadline);
+  }
+
+  /**
+   * The turn timer ran out: finish the current player's turn for them with the same default
+   * moves as a skipped seat (draw from the draw pile, discard the drawn card). The player is
+   * not marked skipped; their next turn is theirs again.
+   */
+  private async playTimedOutTurn(): Promise<void> {
+    const room = this.room as RoomState;
+    const clock = room.turnClock;
+    if (!clock || clock.deadline === null || room.pause) return;
+    // At most a draw and a discard; stop as soon as the turn has moved on.
+    for (let step = 0; step < 2; step++) {
+      const game = this.game;
+      if (!game || turnKey(game.round, game.currentIndex) !== clock.key) break;
+      const move = pickAutoMove(game);
+      const result = move?.candidates
+        .map((action) => applyAction(game, move.playerId, action))
+        .find((r) => r.ok);
+      if (!result) break;
+      await this.commit(result);
+    }
+    // Whatever happened, this clock is spent. If the turn somehow could not be finished,
+    // `syncTurnClock` starts a fresh one rather than firing the alarm in a loop.
+    room.turnClock = null;
+  }
+
   /** Starts the next round once every connected player has pressed continue. */
   private async maybeAdvanceRound(): Promise<void> {
     const room = this.room as RoomState;
@@ -418,6 +486,7 @@ export class Room extends DurableObject<Env> {
     await this.maybeAdvanceRound();
     await this.autoPlay();
     this.syncPause();
+    this.syncTurnClock();
     await this.persist();
     this.broadcastRoom();
   }
@@ -579,6 +648,10 @@ export class Room extends DurableObject<Env> {
 
   private graceMs(): number {
     return msSetting(this.env.GRACE_MS, DEFAULT_GRACE_MS);
+  }
+
+  private turnMs(): number {
+    return msSetting(this.env.TURN_MS, TURN_TIMER_SECONDS * 1000);
   }
 
   private expiryMs(): number {

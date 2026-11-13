@@ -58,6 +58,8 @@ const roomInfo = (patch: Partial<RoomInfo> = {}): RoomInfo => ({
   status: 'lobby',
   hostSeat: 0,
   maxSeats: 7,
+  turnTimer: false,
+  turnDeadline: null,
   players: [
     { seat: 0, name: 'Ann', avatar: 'fox', ready: false, connected: true, skipped: false },
     { seat: 1, name: 'Bo', avatar: 'owl', ready: true, connected: false, skipped: true },
@@ -217,6 +219,46 @@ describe('RemoteGameClient: joining', () => {
     ]);
     // The new room defaults to 7 seats; the menu asked for 5, so the host applies it.
     expect(t.last().messages[1]).toEqual({ type: 'settings', maxSeats: 5 });
+  });
+
+  it('applies the turn timer chosen in the menu, together with the seat count', async () => {
+    const t = setup();
+    const pending = t.client.createRoom(profile, { maxSeats: 5, turnTimer: true });
+    await t.flush();
+    t.last().open();
+    t.last().receive(welcome());
+    await pending;
+    expect(t.last().messages[1]).toEqual({ type: 'settings', maxSeats: 5, turnTimer: true });
+    expect(t.last().messages).toHaveLength(2);
+  });
+
+  it('sends nothing extra when the new room already matches the menu choices', async () => {
+    const t = setup();
+    const pending = t.client.createRoom(profile, { maxSeats: 7, turnTimer: false });
+    await t.flush();
+    t.last().open();
+    t.last().receive(welcome());
+    await pending;
+    expect(t.last().messages).toHaveLength(1);
+  });
+
+  it('maps the turn timer setting and deadline, and sends host changes', async () => {
+    const t = setup();
+    const socket = await joined(t);
+    expect(t.seen.room!.settings.turnTimer).toBe(false);
+    expect(t.seen.room!.turnDeadline).toBeNull();
+    socket.receive({
+      type: 'roomUpdate',
+      room: roomInfo({ status: 'game', turnTimer: true, turnDeadline: 98765 }),
+    });
+    expect(t.seen.room!.settings.turnTimer).toBe(true);
+    expect(t.seen.room!.turnDeadline).toBe(98765);
+
+    const before = socket.messages.length;
+    await t.client.updateSettings({ turnTimer: false });
+    expect(socket.messages[before]).toEqual({ type: 'settings', turnTimer: false });
+    await t.client.updateSettings({});
+    expect(socket.messages).toHaveLength(before + 1);
   });
 
   it('derives wss:// from an https:// server URL', async () => {

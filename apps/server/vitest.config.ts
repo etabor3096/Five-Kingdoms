@@ -13,7 +13,7 @@ export default defineConfig({
         plugins: [
           cloudflareTest({
             wrangler: { configPath: './wrangler.jsonc' },
-            miniflare: { bindings: { GRACE_MS: '400', EXPIRY_MS: '1500' } },
+            miniflare: { bindings: { GRACE_MS: '400', EXPIRY_MS: '1500', TURN_MS: '500' } },
           }),
         ],
         test: { name: 'worker', include: ['test/integration/**/*.test.ts'], testTimeout: 30_000 },

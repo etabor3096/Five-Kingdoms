@@ -7,6 +7,8 @@ export interface Env {
   GRACE_MS?: string;
   /** Idle room lifetime after the last socket closes, in ms. Defaults to 30 minutes. */
   EXPIRY_MS?: string;
+  /** Length of a timed turn in ms. Defaults to `TURN_TIMER_SECONDS`; tests shorten it. */
+  TURN_MS?: string;
 }
 
 export const DEFAULT_GRACE_MS = 60_000;

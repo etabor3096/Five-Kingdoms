@@ -122,8 +122,9 @@ export class LocalGameClient implements GameClient, DevHarness {
       selfId: LOCAL_PLAYER_ID,
       hostId: LOCAL_PLAYER_ID,
       phase: 'lobby',
-      settings: { maxSeats },
+      settings: { maxSeats, turnTimer: settings.turnTimer ?? false },
       players,
+      turnDeadline: null,
       pause: null,
       continuedIds: [],
     };
@@ -147,8 +148,9 @@ export class LocalGameClient implements GameClient, DevHarness {
       selfId: LOCAL_PLAYER_ID,
       hostId: host.id,
       phase: 'lobby',
-      settings: { maxSeats: clamp(bots.length + 1, 2, 7) },
+      settings: { maxSeats: clamp(bots.length + 1, 2, 7), turnTimer: false },
       players: [...bots, this.selfPlayer(false)],
+      turnDeadline: null,
       pause: null,
       continuedIds: [],
     };
@@ -186,7 +188,9 @@ export class LocalGameClient implements GameClient, DevHarness {
     // Dev convenience: drop surplus opponents rather than refusing the change.
     const players = room.players.slice(0, maxSeats);
     this.opponentCount = Math.max(1, players.length - 1);
-    this.room = { ...room, settings: { ...room.settings, maxSeats }, players };
+    // The harness remembers the turn timer setting but never runs a clock: there is no server.
+    const turnTimer = settings.turnTimer ?? room.settings.turnTimer;
+    this.room = { ...room, settings: { maxSeats, turnTimer }, players };
     this.publishRoom();
     return Promise.resolve();
   }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { Pressable } from 'react-native';
 import { Avatar } from '../components/Avatar';
+import { TurnTimerToggle } from '../components/TurnTimerToggle';
 import { Btn, DevBadge, Panel, Stepper, Txt } from '../components/ui';
 import { AVATARS } from '../design/avatars';
 import { COLORS } from '../design/tokens';
@@ -23,6 +24,7 @@ export function MenuScreen({
   const { client, showToast } = useStoreActions();
   const [step, setStep] = useState<Step>('home');
   const [maxSeats, setMaxSeats] = useState(4);
+  const [turnTimer, setTurnTimer] = useState(false);
   const [code, setCode] = useState('');
   const [opponents, setOpponents] = useState(3);
 
@@ -113,11 +115,12 @@ export function MenuScreen({
               max={7}
               onChange={setMaxSeats}
             />
+            <TurnTimerToggle value={turnTimer} onChange={setTurnTimer} />
             <Btn
               label="Create"
               onPress={() => {
                 applyOpponents();
-                void client.createRoom(who, { maxSeats });
+                void client.createRoom(who, { maxSeats, turnTimer });
               }}
             />
             <Btn label="Back" variant="ghost" size={18} onPress={() => setStep('home')} />
